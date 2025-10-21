@@ -1,0 +1,313 @@
+import { test, expect, describe, beforeEach, afterEach } from '@jest/globals';
+import { FastifyInstance } from 'fastify';
+import { createTestApp } from '../../../test/test-helper';
+import { {{ModuleName}}Service } from '../{{moduleName}}.service';
+import { Create{{ModuleName}}, Update{{ModuleName}} } from '../{{moduleName}}.types';
+{{#if withEvents}}
+import { EventService } from '../../../shared/websocket/event.service';
+{{/if}}
+
+describe('{{ModuleName}} CRUD Operations', () => {
+  let app: FastifyInstance;
+  let {{moduleName}}Service: {{ModuleName}}Service;
+  {{#if withEvents}}
+  let eventService: EventService;
+  const eventSpy = jest.fn();
+  {{/if}}
+
+  beforeEach(async () => {
+    app = await createTestApp({
+      plugins: ['{{moduleName}}-plugin']
+    });
+    
+    {{moduleName}}Service = new {{ModuleName}}Service();
+    {{#if withEvents}}
+    eventService = new EventService();
+    
+    // Mock event emission for testing
+    eventService.emitToRoom = eventSpy;
+    {{/if}}
+  });
+
+  afterEach(async () => {
+    await app.close();
+    {{#if withEvents}}
+    eventSpy.mockClear();
+    {{/if}}
+  });
+
+  describe('POST /{{moduleName}}', () => {
+    test('should create a new {{moduleName}}', async () => {
+      const {{moduleName}}Data: Create{{ModuleName}} = {
+        {{#each columns}}
+        {{#unless (or isPrimaryKey (eq name 'created_at') (eq name 'updated_at'))}}
+        {{name}}: {{#if (getConstraintValue name 0)}}{{#if (eq tsType 'string')}}'{{getConstraintValue name 0}}'{{else}}{{getConstraintValue name 0}}{{/if}}{{else}}{{#ifEquals tsType 'string'}}'test-{{name}}'{{else}}{{#ifEquals tsType 'number'}}123{{else}}{{#ifEquals tsType 'boolean'}}true{{else}}null{{/ifEquals}}{{/ifEquals}}{{/ifEquals}}{{/if}}{{#unless @last}},{{/unless}}
+        {{/unless}}
+        {{/each}}
+      };
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/{{moduleName}}',
+        payload: {{moduleName}}Data
+      });
+
+      expect(response.statusCode).toBe(201);
+      
+      const result = JSON.parse(response.payload);
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject({{moduleName}}Data);
+      expect(result.data.id).toBeDefined();
+
+      {{#if withEvents}}
+      // Verify event was emitted
+      expect(eventSpy).toHaveBeenCalledWith(
+        'global',
+        '{{moduleName}}.created',
+        expect.objectContaining({{moduleName}}Data)
+      );
+      {{/if}}
+    });
+
+    test('should validate required fields', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/{{moduleName}}',
+        payload: {}
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('GET /{{moduleName}}/:id', () => {
+    test('should get {{moduleName}} by id', async () => {
+      // Create a {{moduleName}} first
+      const {{moduleName}}Data: Create{{ModuleName}} = {
+        {{#each columns}}
+        {{#unless (or isPrimaryKey (eq name 'created_at') (eq name 'updated_at'))}}
+        {{name}}: {{#if (getConstraintValue name 0)}}{{#if (eq tsType 'string')}}'{{getConstraintValue name 0}}'{{else}}{{getConstraintValue name 0}}{{/if}}{{else}}{{#ifEquals tsType 'string'}}'test-{{name}}'{{else}}{{#ifEquals tsType 'number'}}123{{else}}{{#ifEquals tsType 'boolean'}}true{{else}}null{{/ifEquals}}{{/ifEquals}}{{/ifEquals}}{{/if}}{{#unless @last}},{{/unless}}
+        {{/unless}}
+        {{/each}}
+      };
+
+      const created{{ModuleName}} = await {{moduleName}}Service.create({{moduleName}}Data);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/{{moduleName}}/${created{{ModuleName}}.id}`
+      });
+
+      expect(response.statusCode).toBe(200);
+      
+      const result = JSON.parse(response.payload);
+      expect(result.success).toBe(true);
+      expect(result.data.id).toBe(created{{ModuleName}}.id);
+    });
+
+    test('should return 404 for non-existent {{moduleName}}', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/{{moduleName}}/99999'
+      });
+
+      expect(response.statusCode).toBe(404);
+    });
+  });
+
+  describe('GET /{{moduleName}}', () => {
+    test('should list {{moduleName}}s with pagination', async () => {
+      // Create multiple {{moduleName}}s
+      const {{moduleName}}Data: Create{{ModuleName}} = {
+        {{#each columns}}
+        {{#unless (or isPrimaryKey (eq name 'created_at') (eq name 'updated_at'))}}
+        {{name}}: {{#if (getConstraintValue name 0)}}{{#if (eq tsType 'string')}}'{{getConstraintValue name 0}}'{{else}}{{getConstraintValue name 0}}{{/if}}{{else}}{{#ifEquals tsType 'string'}}'test-{{name}}'{{else}}{{#ifEquals tsType 'number'}}123{{else}}{{#ifEquals tsType 'boolean'}}true{{else}}null{{/ifEquals}}{{/ifEquals}}{{/ifEquals}}{{/if}}{{#unless @last}},{{/unless}}
+        {{/unless}}
+        {{/each}}
+      };
+
+      await {{moduleName}}Service.create({{moduleName}}Data);
+      await {{moduleName}}Service.create({...{{moduleName}}Data});
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/{{moduleName}}?page=1&limit=10'
+      });
+
+      expect(response.statusCode).toBe(200);
+      
+      const result = JSON.parse(response.payload);
+      expect(result.success).toBe(true);
+      expect(Array.isArray(result.data)).toBe(true);
+      expect(result.pagination).toBeDefined();
+      expect(result.pagination.page).toBe(1);
+      expect(result.pagination.limit).toBe(10);
+    });
+
+    test('should support search functionality', async () => {
+      const {{moduleName}}Data: Create{{ModuleName}} = {
+        {{#each columns}}
+        {{#unless (or isPrimaryKey (eq name 'created_at') (eq name 'updated_at'))}}
+        {{name}}: {{#ifEquals tsType 'string'}}'searchable-{{name}}'{{else}}{{#ifEquals tsType 'number'}}123{{else}}{{#ifEquals tsType 'boolean'}}true{{else}}null{{/ifEquals}}{{/ifEquals}}{{/ifEquals}}{{#unless @last}},{{/unless}}
+        {{/unless}}
+        {{/each}}
+      };
+
+      await {{moduleName}}Service.create({{moduleName}}Data);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/{{moduleName}}?search=searchable'
+      });
+
+      expect(response.statusCode).toBe(200);
+      
+      const result = JSON.parse(response.payload);
+      expect(result.success).toBe(true);
+      expect(result.data.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('PUT /{{moduleName}}/:id', () => {
+    test('should update {{moduleName}}', async () => {
+      // Create a {{moduleName}} first
+      const {{moduleName}}Data: Create{{ModuleName}} = {
+        {{#each columns}}
+        {{#unless (or isPrimaryKey (eq name 'created_at') (eq name 'updated_at'))}}
+        {{name}}: {{#ifEquals tsType 'string'}}'original-{{name}}'{{else}}{{#ifEquals tsType 'number'}}123{{else}}{{#ifEquals tsType 'boolean'}}true{{else}}null{{/ifEquals}}{{/ifEquals}}{{/ifEquals}}{{#unless @last}},{{/unless}}
+        {{/unless}}
+        {{/each}}
+      };
+
+      const created{{ModuleName}} = await {{moduleName}}Service.create({{moduleName}}Data);
+
+      const updateData: Update{{ModuleName}} = {
+        {{#each columns}}
+        {{#unless (or isPrimaryKey (eq name 'created_at') (eq name 'updated_at'))}}
+        {{#if @first}}
+        {{name}}: {{#ifEquals tsType 'string'}}'updated-{{name}}'{{else}}{{#ifEquals tsType 'number'}}456{{else}}{{#ifEquals tsType 'boolean'}}false{{else}}null{{/ifEquals}}{{/ifEquals}}{{/ifEquals}}
+        {{/if}}
+        {{/unless}}
+        {{/each}}
+      };
+
+      const response = await app.inject({
+        method: 'PUT',
+        url: `/{{moduleName}}/${created{{ModuleName}}.id}`,
+        payload: updateData
+      });
+
+      expect(response.statusCode).toBe(200);
+      
+      const result = JSON.parse(response.payload);
+      expect(result.success).toBe(true);
+      expect(result.data).toMatchObject(updateData);
+
+      {{#if withEvents}}
+      // Verify update event was emitted
+      expect(eventSpy).toHaveBeenCalledWith(
+        'global',
+        '{{moduleName}}.updated',
+        expect.objectContaining(updateData)
+      );
+      {{/if}}
+    });
+
+    test('should return 404 for non-existent {{moduleName}}', async () => {
+      const response = await app.inject({
+        method: 'PUT',
+        url: '/{{moduleName}}/99999',
+        payload: {}
+      });
+
+      expect(response.statusCode).toBe(404);
+    });
+  });
+
+  describe('DELETE /{{moduleName}}/:id', () => {
+    test('should delete {{moduleName}}', async () => {
+      // Create a {{moduleName}} first
+      const {{moduleName}}Data: Create{{ModuleName}} = {
+        {{#each columns}}
+        {{#unless (or isPrimaryKey (eq name 'created_at') (eq name 'updated_at'))}}
+        {{name}}: {{#if (getConstraintValue name 0)}}{{#if (eq tsType 'string')}}'{{getConstraintValue name 0}}'{{else}}{{getConstraintValue name 0}}{{/if}}{{else}}{{#ifEquals tsType 'string'}}'test-{{name}}'{{else}}{{#ifEquals tsType 'number'}}123{{else}}{{#ifEquals tsType 'boolean'}}true{{else}}null{{/ifEquals}}{{/ifEquals}}{{/ifEquals}}{{/if}}{{#unless @last}},{{/unless}}
+        {{/unless}}
+        {{/each}}
+      };
+
+      const created{{ModuleName}} = await {{moduleName}}Service.create({{moduleName}}Data);
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/{{moduleName}}/${created{{ModuleName}}.id}`
+      });
+
+      expect(response.statusCode).toBe(200);
+      
+      const result = JSON.parse(response.payload);
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('deleted successfully');
+
+      {{#if withEvents}}
+      // Verify delete event was emitted
+      expect(eventSpy).toHaveBeenCalledWith(
+        'global',
+        '{{moduleName}}.deleted',
+        { id: created{{ModuleName}}.id }
+      );
+      {{/if}}
+
+      // Verify {{moduleName}} is actually deleted
+      const deleted{{ModuleName}} = await {{moduleName}}Service.findById(created{{ModuleName}}.id);
+      expect(deleted{{ModuleName}}).toBeNull();
+    });
+
+    test('should return 404 for non-existent {{moduleName}}', async () => {
+      const response = await app.inject({
+        method: 'DELETE',
+        url: '/{{moduleName}}/99999'
+      });
+
+      expect(response.statusCode).toBe(404);
+    });
+  });
+
+  {{#if withEvents}}
+  describe('WebSocket Events', () => {
+    test('should emit events for CRUD operations', async () => {
+      const {{moduleName}}Data: Create{{ModuleName}} = {
+        {{#each columns}}
+        {{#unless (or isPrimaryKey (eq name 'created_at') (eq name 'updated_at'))}}
+        {{name}}: {{#ifEquals tsType 'string'}}'event-test-{{name}}'{{else}}{{#ifEquals tsType 'number'}}123{{else}}{{#ifEquals tsType 'boolean'}}true{{else}}null{{/ifEquals}}{{/ifEquals}}{{/ifEquals}}{{#unless @last}},{{/unless}}
+        {{/unless}}
+        {{/each}}
+      };
+
+      // Test create event
+      const created{{ModuleName}} = await {{moduleName}}Service.create({{moduleName}}Data);
+      expect(eventSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        '{{moduleName}}.created',
+        expect.objectContaining({{moduleName}}Data)
+      );
+
+      // Test update event
+      const updateData = { /* update data */ };
+      await {{moduleName}}Service.update(created{{ModuleName}}.id, updateData);
+      expect(eventSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        '{{moduleName}}.updated',
+        expect.any(Object)
+      );
+
+      // Test delete event
+      await {{moduleName}}Service.delete(created{{ModuleName}}.id);
+      expect(eventSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        '{{moduleName}}.deleted',
+        { id: created{{ModuleName}}.id }
+      );
+    });
+  });
+  {{/if}}
+});

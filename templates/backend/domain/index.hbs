@@ -1,0 +1,114 @@
+import fp from 'fastify-plugin';
+import { FastifyInstance, FastifyPluginOptions } from 'fastify';
+import { {{ModuleName}}Controller } from './controllers/{{kebabCase currentRoute.camelName}}.controller';
+import { {{ModuleName}}Service } from './services/{{kebabCase currentRoute.camelName}}.service';
+import { {{ModuleName}}Repository } from './repositories/{{kebabCase currentRoute.camelName}}.repository';
+import { {{currentRoute.camelName}}Routes } from './routes/index';
+{{#if (or (eq package 'enterprise') (eq package 'full'))}}
+import { ExportService } from '../../services/export.service';
+{{/if}}
+
+// Note: FastifyInstance eventService type is declared in websocket.plugin.ts
+
+/**
+ * {{ModuleName}} Domain Plugin
+ * 
+ * Following Fastify best practices:
+ * - Service instantiation with proper dependency injection
+ * - Encapsulation through plugin scoping
+ * - Lifecycle management with hooks
+ * - Schema registration through Fastify's schema registry
+ */
+export default fp(
+  async function {{moduleName}}DomainPlugin(
+    fastify: FastifyInstance,
+    options: FastifyPluginOptions
+  ) {
+    // Register schemas using Fastify's built-in schema registry
+    if (fastify.hasDecorator('schemaRegistry')) {
+      (fastify as any).schemaRegistry.registerModuleSchemas(
+        '{{moduleName}}',
+        {} // schemas will be imported automatically
+      );
+    }
+
+    // Service instantiation following Fastify DI pattern
+    // Dependencies are accessed from Fastify instance decorators
+    const {{moduleName}}Repository = new {{ModuleName}}Repository((fastify as any).knex);
+    const {{moduleName}}Service = new {{ModuleName}}Service(
+      {{moduleName}}Repository{{#if withEvents}},
+      (fastify as any).eventService{{/if}}
+    );
+    {{#if (or (eq package 'enterprise') (eq package 'full'))}}
+    const exportService = new ExportService();
+    const {{moduleName}}Controller = new {{ModuleName}}Controller({{moduleName}}Service, exportService);
+    {{else}}
+    const {{moduleName}}Controller = new {{ModuleName}}Controller({{moduleName}}Service);
+    {{/if}}
+
+    // Optional: Decorate Fastify instance with service for cross-plugin access
+    // fastify.decorate('{{moduleName}}Service', {{moduleName}}Service);
+
+    // Register routes with controller dependency
+    await fastify.register({{currentRoute.camelName}}Routes, {
+      controller: {{moduleName}}Controller,
+      prefix: options.prefix || '/{{kebabCase tableName}}'
+    });
+
+    // Lifecycle hooks for monitoring
+    fastify.addHook('onReady', async () => {
+      fastify.log.info(`{{ModuleName}} domain module registered successfully`);
+    });
+
+    {{#if withEvents}}
+    // Cleanup event listeners on close
+    fastify.addHook('onClose', async () => {
+      fastify.log.info(`Cleaning up {{ModuleName}} domain module resources`);
+      // Add any cleanup logic here
+    });
+    {{/if}}
+  },
+  {
+    name: '{{moduleName}}-domain-plugin',
+    dependencies: ['knex-plugin'{{#if withEvents}}, 'websocket-plugin'{{/if}}]
+  }
+);
+
+// Re-exports for external consumers
+export * from './schemas/{{kebabCase currentRoute.camelName}}.schemas';
+export * from './types/{{kebabCase currentRoute.camelName}}.types';
+export { {{ModuleName}}Repository } from './repositories/{{kebabCase currentRoute.camelName}}.repository';
+export { {{ModuleName}}Service } from './services/{{kebabCase currentRoute.camelName}}.service';
+export { {{ModuleName}}Controller } from './controllers/{{kebabCase currentRoute.camelName}}.controller';
+
+// Re-export commonly used types for external use
+export type {
+  {{ModuleName}},
+  Create{{ModuleName}},
+  Update{{ModuleName}},
+  {{ModuleName}}IdParam,
+  Get{{ModuleName}}Query,
+  List{{ModuleName}}Query{{#if withEvents}},
+  {{ModuleName}}CreatedEvent,
+  {{ModuleName}}UpdatedEvent,
+  {{ModuleName}}DeletedEvent{{/if}}
+} from './schemas/{{kebabCase currentRoute.camelName}}.schemas';
+
+{{#if withEvents}}
+// Event type definitions for external consumers
+import { {{ModuleName}} } from './schemas/{{kebabCase currentRoute.camelName}}.schemas';
+
+export interface {{ModuleName}}EventHandlers {
+  onCreated?: (data: {{ModuleName}}) => void | Promise<void>;
+  onUpdated?: (data: {{ModuleName}}) => void | Promise<void>;
+  onDeleted?: (data: { id: number | string }) => void | Promise<void>;
+}
+
+export interface {{ModuleName}}WebSocketSubscription {
+  subscribe(handlers: {{ModuleName}}EventHandlers): void;
+  unsubscribe(): void;
+}
+{{/if}}
+
+// Module name constant
+export const MODULE_NAME = '{{moduleName}}' as const;

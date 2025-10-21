@@ -1,0 +1,90 @@
+{
+  "name": "v2",
+  "version": "2.0.0",
+  "description": "Angular 19 + Signals + Material (Recommended) - Modern Angular with Signals",
+  "author": "AegisX Team",
+  "type": "frontend",
+  "framework": "angular",
+  "angularVersion": "19",
+  "default": true,
+  "files": [
+    {
+      "template": "list-component-v2.hbs",
+      "output": "components/{{kebabCase tableName}}-list.component.ts",
+      "description": "Main list component with Signals"
+    },
+    {
+      "template": "list-component.html-v2.hbs",
+      "output": "components/{{kebabCase tableName}}-list.component.html",
+      "description": "List template"
+    },
+    {
+      "template": "list-component.scss-v2.hbs",
+      "output": "components/{{kebabCase tableName}}-list.component.scss",
+      "description": "List styles"
+    },
+    {
+      "template": "list-header-component-v2.hbs",
+      "output": "components/{{kebabCase tableName}}-list-header.component.ts",
+      "description": "List header with actions"
+    },
+    {
+      "template": "list-filters-component-v2.hbs",
+      "output": "components/{{kebabCase tableName}}-list-filters.component.ts",
+      "description": "Advanced filters component"
+    },
+    {
+      "template": "create-dialog-v2.hbs",
+      "output": "components/{{kebabCase tableName}}-create.dialog.ts",
+      "description": "Create dialog"
+    },
+    {
+      "template": "edit-dialog-v2.hbs",
+      "output": "components/{{kebabCase tableName}}-edit.dialog.ts",
+      "description": "Edit dialog"
+    },
+    {
+      "template": "view-dialog-v2.hbs",
+      "output": "components/{{kebabCase tableName}}-view.dialog.ts",
+      "description": "View details dialog"
+    },
+    {
+      "template": "shared-form-v2.hbs",
+      "output": "components/{{kebabCase tableName}}-form.component.ts",
+      "description": "Shared form component"
+    },
+    {
+      "template": "shared-export.component.hbs",
+      "output": "components/{{kebabCase tableName}}-export.component.ts",
+      "description": "Export functionality component"
+    },
+    {
+      "template": "service.hbs",
+      "output": "services/{{kebabCase tableName}}.service.ts",
+      "description": "Angular service with HTTP calls"
+    },
+    {
+      "template": "types.hbs",
+      "output": "types/{{kebabCase tableName}}.types.ts",
+      "description": "TypeScript interfaces"
+    },
+    {
+      "template": "routes.hbs",
+      "output": "{{kebabCase tableName}}.routes.ts",
+      "description": "Angular routes configuration"
+    }
+  ],
+  "dependencies": {
+    "@angular/core": "^19.0.0",
+    "@angular/material": "^19.0.0",
+    "@angular/forms": "^19.0.0"
+  },
+  "features": {
+    "signals": true,
+    "standaloneComponents": true,
+    "materialDesign": true,
+    "reactiveForm": true,
+    "advancedFilters": true,
+    "exportFunctionality": true
+  }
+}

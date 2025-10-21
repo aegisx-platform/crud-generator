@@ -1,0 +1,94 @@
+import { Component, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
+
+import { {{PascalCase}}Service } from '../services/{{kebabCase moduleName}}.service';
+import { Create{{PascalCase}}Request } from '../types/{{typesFileName}}';
+import { {{PascalCase}}FormComponent, {{PascalCase}}FormData } from './{{kebabCase moduleName}}-form.component';
+
+@Component({
+  selector: 'app-{{kebabCase moduleName}}-create-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatDialogModule,
+    {{PascalCase}}FormComponent,
+  ],
+  template: `
+    <div class="create-dialog">
+      <h2 mat-dialog-title>Create {{title}}</h2>
+      
+      <mat-dialog-content>
+        <app-{{kebabCase moduleName}}-form
+          mode="create"
+          [loading]="loading()"
+          (formSubmit)="onFormSubmit($event)"
+          (formCancel)="onCancel()"
+        ></app-{{kebabCase moduleName}}-form>
+      </mat-dialog-content>
+    </div>
+  `,
+  styles: [`
+    .create-dialog {
+      min-width: 500px;
+      max-width: 800px;
+    }
+
+    mat-dialog-content {
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    @media (max-width: 768px) {
+      .create-dialog {
+        min-width: 90vw;
+      }
+    }
+  `]
+})
+export class {{PascalCase}}CreateDialogComponent {
+  private {{camelCase moduleName}}Service = inject({{PascalCase}}Service);
+  private snackBar = inject(MatSnackBar);
+  private dialogRef = inject(MatDialogRef<{{PascalCase}}CreateDialogComponent>);
+
+  loading = signal<boolean>(false);
+
+  async onFormSubmit(formData: {{PascalCase}}FormData) {
+    this.loading.set(true);
+    
+    try {
+      const createRequest = formData as Create{{PascalCase}}Request;
+      const result = await this.{{camelCase moduleName}}Service.create{{PascalCase}}(createRequest);
+      
+      if (result) {
+        this.snackBar.open('{{title}} created successfully', 'Close', {
+          duration: 3000,
+        });
+        this.dialogRef.close(result);
+      } else {
+        this.snackBar.open('Failed to create {{title}}', 'Close', {
+          duration: 5000,
+        });
+      }
+    } catch (error: any) {
+      const errorMessage = this.{{camelCase moduleName}}Service.permissionError()
+        ? 'You do not have permission to create {{title}}'
+        : error?.message || 'Failed to create {{title}}';
+      this.snackBar.open(
+        errorMessage,
+        'Close',
+        {
+          duration: 5000,
+          panelClass: ['error-snackbar']
+        }
+      );
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  onCancel() {
+    this.dialogRef.close();
+  }
+}

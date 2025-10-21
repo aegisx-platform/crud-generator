@@ -1,0 +1,582 @@
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { computed, inject, Injectable, signal } from '@angular/core';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+
+// Import types from the shared types file
+import {
+  {{PascalCase}},
+  Create{{PascalCase}}Request,
+  Update{{PascalCase}}Request,
+  List{{PascalCase}}Query,
+  ApiResponse,
+  BulkResponse,
+  PaginatedResponse
+} from '../types/{{typesFileName}}';
+
+// ===== SERVICE CONFIGURATION =====
+
+const API_BASE_URL = '';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class {{PascalCase}}Service {
+  private http = inject(HttpClient);
+  private baseUrl = `${API_BASE_URL}/{{tableNameToKebab moduleName}}`;
+
+  // ===== SIGNALS FOR STATE MANAGEMENT =====
+
+  private {{camelCase moduleName}}ListSignal = signal<{{PascalCase}}[]>([]);
+  private loadingSignal = signal<boolean>(false);
+  private errorSignal = signal<string | null>(null);
+  private permissionErrorSignal = signal<boolean>(false);
+  private lastErrorStatusSignal = signal<number | null>(null);
+  private selected{{PascalCase}}Signal = signal<{{PascalCase}} | null>(null);
+  private currentPageSignal = signal<number>(1);
+  private pageSizeSignal = signal<number>(10);
+  private total{{PascalCase}}Signal = signal<number>(0);
+
+  // ===== PUBLIC READONLY SIGNALS =====
+
+  readonly {{camelCase moduleName}}List = this.{{camelCase moduleName}}ListSignal.asReadonly();
+  readonly loading = this.loadingSignal.asReadonly();
+  readonly error = this.errorSignal.asReadonly();
+  readonly permissionError = this.permissionErrorSignal.asReadonly();
+  readonly lastErrorStatus = this.lastErrorStatusSignal.asReadonly();
+  readonly selected{{PascalCase}} = this.selected{{PascalCase}}Signal.asReadonly();
+  readonly currentPage = this.currentPageSignal.asReadonly();
+  readonly total{{PascalCase}} = this.total{{PascalCase}}Signal.asReadonly();
+  readonly pageSize = this.pageSizeSignal.asReadonly();
+
+  // ===== COMPUTED SIGNALS =====
+  
+  readonly totalPages = computed(() => {
+    const total = this.total{{PascalCase}}Signal();
+    const size = this.pageSizeSignal();
+    return Math.ceil(total / size);
+  });
+
+  readonly hasNextPage = computed(() => {
+    return this.currentPageSignal() < this.totalPages();
+  });
+
+  readonly hasPreviousPage = computed(() => {
+    return this.currentPageSignal() > 1;
+  });
+
+  // ===== ERROR HANDLING HELPER =====
+
+  /**
+   * Handle HTTP errors and set appropriate error signals
+   */
+  private handleError(error: any, defaultMessage: string): void {
+    const status = error?.status || null;
+    this.lastErrorStatusSignal.set(status);
+
+    // Check if error is 403 Forbidden
+    if (status === 403) {
+      this.permissionErrorSignal.set(true);
+      this.errorSignal.set('You do not have permission to perform this action');
+    } else {
+      this.permissionErrorSignal.set(false);
+      this.errorSignal.set(error.message || defaultMessage);
+    }
+  }
+
+  /**
+   * Clear permission error state
+   */
+  clearPermissionError(): void {
+    this.permissionErrorSignal.set(false);
+    this.lastErrorStatusSignal.set(null);
+  }
+
+  // ===== STANDARD CRUD OPERATIONS =====
+
+  /**
+   * Load {{camelCase moduleName}} list with pagination and filters
+   */
+  async load{{PascalCase}}List(params?: List{{PascalCase}}Query): Promise<void> {
+    this.loadingSignal.set(true);
+    this.errorSignal.set(null);
+
+    try {
+      // Build HTTP params
+      let httpParams = new HttpParams();
+      if (params?.page) httpParams = httpParams.set('page', params.page.toString());
+      if (params?.limit) httpParams = httpParams.set('limit', params.limit.toString());
+{{#if searchFields}}
+      if (params?.search) httpParams = httpParams.set('search', params.search);
+{{/if}}
+      if (params?.sort) httpParams = httpParams.set('sort', params.sort);
+      
+      // Handle fields array parameter (multiple values)
+      if (params?.fields && params.fields.length > 0) {
+        params.fields.forEach((field: string) => {
+          httpParams = httpParams.append('fields', field);
+        });
+      }
+      
+      // Add smart filter parameters based on table schema
+      {{#each columns}}
+      {{#unless isPrimaryKey}}
+      {{#if (contains type 'timestamp')}}
+      // Date/DateTime filtering for {{name}}
+      if (params?.{{name}}) httpParams = httpParams.set('{{name}}', params.{{name}});
+      if (params?.{{name}}_min) httpParams = httpParams.set('{{name}}_min', params.{{name}}_min);
+      if (params?.{{name}}_max) httpParams = httpParams.set('{{name}}_max', params.{{name}}_max);
+      {{else if (eq tsType 'boolean')}}
+      // Boolean filtering for {{name}}
+      if (params?.{{name}} !== undefined) httpParams = httpParams.set('{{name}}', params.{{name}}.toString());
+      {{else if (eq tsType 'number')}}
+      // Numeric filtering for {{name}}
+      if (params?.{{name}} !== undefined) httpParams = httpParams.set('{{name}}', params.{{name}}.toString());
+      if (params?.{{name}}_min !== undefined) httpParams = httpParams.set('{{name}}_min', params.{{name}}_min.toString());
+      if (params?.{{name}}_max !== undefined) httpParams = httpParams.set('{{name}}_max', params.{{name}}_max.toString());
+      {{else if (eq tsType 'string')}}
+      // String filtering for {{name}}
+      if (params?.{{name}}) httpParams = httpParams.set('{{name}}', params.{{name}});
+      {{/if}}
+      {{/unless}}
+      {{/each}}
+
+      const response = await this.http
+        .get<PaginatedResponse<{{PascalCase}}>>(this.baseUrl, { params: httpParams })
+        .toPromise();
+
+      if (response) {
+        this.{{camelCase moduleName}}ListSignal.set(response.data);
+
+        if (response.pagination) {
+          this.total{{PascalCase}}Signal.set(response.pagination.total);
+          this.currentPageSignal.set(response.pagination.page);
+          this.pageSizeSignal.set(response.pagination.limit);
+        }
+      }
+    } catch (error: any) {
+      this.handleError(error, 'Failed to load {{camelCase moduleName}} list');
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
+  /**
+   * Load single {{camelCase moduleName}} by ID
+   */
+  async load{{PascalCase}}ById(id: string): Promise<{{PascalCase}} | null> {
+    this.loadingSignal.set(true);
+
+    try {
+      const response = await this.http
+        .get<ApiResponse<{{PascalCase}}>>(`${this.baseUrl}/${id}`)
+        .toPromise();
+
+      if (response) {
+        this.selected{{PascalCase}}Signal.set(response.data);
+        return response.data;
+      }
+      return null;
+    } catch (error: any) {
+      this.handleError(error, 'Failed to load {{camelCase moduleName}}');
+      return null;
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
+  /**
+   * Create new {{camelCase moduleName}}
+   */
+  async create{{PascalCase}}(data: Create{{PascalCase}}Request): Promise<{{PascalCase}} | null> {
+    this.loadingSignal.set(true);
+
+    try {
+      const response = await this.http
+        .post<ApiResponse<{{PascalCase}}>>(`${this.baseUrl}`, data)
+        .toPromise();
+
+      if (response) {
+        // Optimistic update: add to list
+        this.{{camelCase moduleName}}ListSignal.update((list) => [...list, response.data!]);
+        this.total{{PascalCase}}Signal.update(total => total + 1);
+        return response.data;
+      }
+      return null;
+    } catch (error: any) {
+      this.handleError(error, 'Failed to create {{camelCase moduleName}}');
+      throw error;
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
+  /**
+   * Update existing {{camelCase moduleName}}
+   */
+  async update{{PascalCase}}(id: string, data: Update{{PascalCase}}Request): Promise<{{PascalCase}} | null> {
+    this.loadingSignal.set(true);
+
+    try {
+      const response = await this.http
+        .put<ApiResponse<{{PascalCase}}>>(`${this.baseUrl}/${id}`, data)
+        .toPromise();
+
+      if (response) {
+        // Optimistic update: replace in list
+        this.{{camelCase moduleName}}ListSignal.update((list) =>
+          list.map((item) => (item.id === id ? response.data! : item))
+        );
+        // Update selected {{camelCase moduleName}} if it's the same
+        if (this.selected{{PascalCase}}Signal()?.id === id) {
+          this.selected{{PascalCase}}Signal.set(response.data);
+        }
+        return response.data;
+      }
+      return null;
+    } catch (error: any) {
+      this.handleError(error, 'Failed to update {{camelCase moduleName}}');
+      throw error;
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
+  /**
+   * Delete {{camelCase moduleName}} by ID
+   */
+  async delete{{PascalCase}}(id: string): Promise<boolean> {
+    this.loadingSignal.set(true);
+
+    try {
+      const response = await this.http
+        .delete<ApiResponse<{ id: string }>>(`${this.baseUrl}/${id}`)
+        .toPromise();
+
+      if (response?.success) {
+        // Optimistic update: remove from list
+        this.{{camelCase moduleName}}ListSignal.update((list) =>
+          list.filter((item) => item.id !== id)
+        );
+        this.total{{PascalCase}}Signal.update(total => Math.max(0, total - 1));
+        // Clear selected {{camelCase moduleName}} if it's the deleted one
+        if (this.selected{{PascalCase}}Signal()?.id === id) {
+          this.selected{{PascalCase}}Signal.set(null);
+        }
+        return true;
+      }
+      return false;
+    } catch (error: any) {
+      this.handleError(error, 'Failed to delete {{camelCase moduleName}}');
+      throw error;
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
+{{#if includeEnhanced}}
+  // ===== ENHANCED OPERATIONS =====
+
+  /**
+   * Export {{camelCase moduleName}} data
+   */
+  async export{{PascalCase}}(options: {
+    format: 'csv' | 'excel' | 'pdf';
+    ids?: string[];
+    filters?: Record<string, any>;
+    fields?: string[];
+    filename?: string;
+    applyFilters?: boolean;
+    includeMetadata?: boolean;
+  }): Promise<Blob> {
+    try {
+      let httpParams = new HttpParams()
+        .set('format', options.format);
+
+      if (options.ids && options.ids.length > 0) {
+        options.ids.forEach(id => {
+          httpParams = httpParams.append('ids', id);
+        });
+      }
+
+      if (options.filters && options.applyFilters) {
+        Object.entries(options.filters).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') {
+            httpParams = httpParams.set(`filters[${key}]`, String(value));
+          }
+        });
+      }
+
+      if (options.fields && options.fields.length > 0) {
+        options.fields.forEach(field => {
+          httpParams = httpParams.append('fields', field);
+        });
+      }
+
+      if (options.filename) {
+        httpParams = httpParams.set('filename', options.filename);
+      }
+
+      if (options.applyFilters !== undefined) {
+        httpParams = httpParams.set('applyFilters', String(options.applyFilters));
+      }
+
+      if (options.includeMetadata !== undefined) {
+        httpParams = httpParams.set('includeMetadata', String(options.includeMetadata));
+      }
+
+      const response = await this.http
+        .get(`${this.baseUrl}/export`, {
+          params: httpParams,
+          responseType: 'blob'
+        })
+        .toPromise();
+
+      if (response) {
+        return response;
+      }
+
+      throw new Error('Export failed - no response received');
+    } catch (error: any) {
+      console.error('Failed to export {{camelCase moduleName}} data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get dropdown options for {{camelCase moduleName}}
+   */
+  async getDropdownOptions(params: {search?: string, limit?: number} = {}): Promise<Array<{value: string, label: string}>> {
+    try {
+      let httpParams = new HttpParams();
+      if (params.search) httpParams = httpParams.set('search', params.search);
+      if (params.limit) httpParams = httpParams.set('limit', params.limit.toString());
+
+      const response = await this.http
+        .get<ApiResponse<{options: Array<{value: string, label: string}>, total: number}>>(`${this.baseUrl}/dropdown`, { params: httpParams })
+        .toPromise();
+
+      if (response?.success && response.data?.options) {
+        return response.data.options;
+      }
+      return [];
+    } catch (error: any) {
+      console.error('Failed to fetch {{camelCase moduleName}} dropdown options:', error);
+      return [];
+    }
+  }
+
+  {{#each dropdownDependencies}}
+  /**
+   * Get {{referencedTable}} dropdown options for {{field}} field
+   */
+  async get{{pascalCase referencedTable}}Dropdown(params: {search?: string, limit?: number} = {}): Promise<Array<{value: string, label: string, disabled?: boolean}>> {
+    try {
+      let httpParams = new HttpParams();
+      if (params.search) httpParams = httpParams.set('search', params.search);
+      if (params.limit) httpParams = httpParams.set('limit', params.limit.toString());
+
+      const response = await this.http
+        .get<ApiResponse<{options: Array<{value: string, label: string, disabled?: boolean}>, total: number}>>('{{endpoint}}', { params: httpParams })
+        .toPromise();
+
+      if (response?.success && response.data?.options) {
+        return response.data.options;
+      }
+      return [];
+    } catch (error: any) {
+      console.error('Failed to fetch {{referencedTable}} dropdown options:', error);
+      return [];
+    }
+  }
+
+  {{/each}}
+
+  /**
+   * Bulk create {{camelCase moduleName}}s
+   */
+  async bulkCreate{{PascalCase}}(items: Create{{PascalCase}}Request[]): Promise<BulkResponse | null> {
+    this.loadingSignal.set(true);
+
+    try {
+      const response = await this.http
+        .post<BulkResponse>(`${this.baseUrl}/bulk`, { items })
+        .toPromise();
+
+      if (response) {
+        // Refresh list after bulk operation
+        await this.load{{PascalCase}}List();
+        return response;
+      }
+      return null;
+    } catch (error: any) {
+      this.handleError(error, 'Failed to bulk create {{camelCase moduleName}}s');
+      throw error;
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
+  /**
+   * Bulk update {{camelCase moduleName}}s
+   */
+  async bulkUpdate{{PascalCase}}(items: Array<{ id: string, data: Update{{PascalCase}}Request }>): Promise<BulkResponse | null> {
+    this.loadingSignal.set(true);
+
+    try {
+      const response = await this.http
+        .put<BulkResponse>(`${this.baseUrl}/bulk`, { items })
+        .toPromise();
+
+      if (response) {
+        // Refresh list after bulk operation
+        await this.load{{PascalCase}}List();
+        return response;
+      }
+      return null;
+    } catch (error: any) {
+      this.handleError(error, 'Failed to bulk update {{camelCase moduleName}}s');
+      throw error;
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
+  /**
+   * Bulk delete {{camelCase moduleName}}s
+   */
+  async bulkDelete{{PascalCase}}(ids: string[]): Promise<BulkResponse | null> {
+    this.loadingSignal.set(true);
+
+    try {
+      const response = await this.http
+        .delete<BulkResponse>(`${this.baseUrl}/bulk`, { body: { ids } })
+        .toPromise();
+
+      if (response) {
+        // Refresh list after bulk operation
+        await this.load{{PascalCase}}List();
+        return response;
+      }
+      return null;
+    } catch (error: any) {
+      this.handleError(error, 'Failed to bulk delete {{camelCase moduleName}}s');
+      throw error;
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+{{/if}}
+
+{{#if includeFull}}
+  // ===== ADVANCED OPERATIONS (FULL PACKAGE) =====
+
+  /**
+   * Validate {{camelCase moduleName}} data before save
+   */
+  async validate{{PascalCase}}(data: Create{{PascalCase}}Request): Promise<{valid: boolean, errors?: any[]}> {
+    try {
+      const response = await this.http
+        .post<ApiResponse<{valid: boolean, errors?: any[]}>>(`${this.baseUrl}/validate`, { data })
+        .toPromise();
+
+      if (response) {
+        return response.data;
+      }
+      return { valid: false, errors: ['Validation failed'] };
+    } catch (error: any) {
+      console.error('Failed to validate {{camelCase moduleName}}:', error);
+      return { valid: false, errors: [error.message || 'Validation error'] };
+    }
+  }
+
+  /**
+   * Check field uniqueness
+   */
+  async checkUniqueness(field: string, value: string, excludeId?: string): Promise<{unique: boolean}> {
+    try {
+      let params = new HttpParams()
+        .set('value', value);
+      
+      if (excludeId) {
+        params = params.set('excludeId', excludeId);
+      }
+
+      const response = await this.http
+        .get<ApiResponse<{unique: boolean}>>(`${this.baseUrl}/check/${field}`, { params })
+        .toPromise();
+
+      if (response) {
+        return response.data;
+      }
+      return { unique: false };
+    } catch (error: any) {
+      console.error('Failed to check uniqueness:', error);
+      return { unique: false };
+    }
+  }
+
+  /**
+   * Get {{camelCase moduleName}} statistics
+   */
+  async getStats(): Promise<{total: number} | null> {
+    try {
+      const response = await this.http
+        .get<ApiResponse<{total: number}>>(`${this.baseUrl}/stats`)
+        .toPromise();
+
+      if (response) {
+        return response.data;
+      }
+      return null;
+    } catch (error: any) {
+      console.error('Failed to get {{camelCase moduleName}} stats:', error);
+      return null;
+    }
+  }
+{{/if}}
+
+  // ===== UTILITY METHODS =====
+
+  /**
+   * Set current page
+   */
+  setCurrentPage(page: number): void {
+    this.currentPageSignal.set(page);
+  }
+
+  /**
+   * Set page size and reset to first page
+   */
+  setPageSize(size: number): void {
+    this.pageSizeSignal.set(size);
+    this.currentPageSignal.set(1);
+  }
+
+  /**
+   * Select {{camelCase moduleName}}
+   */
+  select{{PascalCase}}({{camelCase moduleName}}: {{PascalCase}} | null): void {
+    this.selected{{PascalCase}}Signal.set({{camelCase moduleName}});
+  }
+
+  /**
+   * Clear error state
+   */
+  clearError(): void {
+    this.errorSignal.set(null);
+    this.clearPermissionError();
+  }
+
+  /**
+   * Reset service state
+   */
+  reset(): void {
+    this.{{camelCase moduleName}}ListSignal.set([]);
+    this.selected{{PascalCase}}Signal.set(null);
+    this.currentPageSignal.set(1);
+    this.errorSignal.set(null);
+    this.clearPermissionError();
+    this.total{{PascalCase}}Signal.set(0);
+  }
+}

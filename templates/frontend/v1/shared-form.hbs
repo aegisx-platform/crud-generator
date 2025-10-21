@@ -1,0 +1,779 @@
+import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule, MatOptionModule } from '@angular/material/core';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatIconModule } from '@angular/material/icon';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
+
+import { {{PascalCase}}, Create{{PascalCase}}Request, Update{{PascalCase}}Request } from '../types/{{typesFileName}}';
+{{#if hasForeignKeys}}
+{{#each foreignKeyServices}}
+{{#if exists}}
+// CRUD-GENERATOR-TAG: Foreign Key Service Import
+import { {{serviceClass}} } from '{{{import}}}';
+{{/if}}
+{{/each}}
+{{/if}}
+{{#if hasDateTimeFields}}
+import { 
+  formatDateTimeForInput, 
+  formatDateTimeForSubmission 
+} from '../../../shared/utils/datetime.utils';
+{{/if}}
+{{#if hasDateFields}}
+import { 
+  formatDateForInput, 
+  formatDateForSubmission 
+} from '../../../shared/utils/datetime.utils';
+{{/if}}
+
+export type {{PascalCase}}FormMode = 'create' | 'edit';
+
+export interface {{PascalCase}}FormData {
+  {{#each formFields}}
+  {{name}}{{#unless required}}?{{/unless}}: {{#if (eq type 'json')}}Record<string, any>{{else if (eq type 'array')}}string[]{{else if (eq tsType 'string')}}string{{else if (eq tsType 'number')}}number{{else if (eq tsType 'boolean')}}boolean{{else if (contains tsType 'Record&lt;string, any&gt;')}}Record<string, any>{{else}}string{{/if}};
+  {{/each}}
+}
+
+@Component({
+  selector: 'app-{{kebabCase moduleName}}-form',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatCheckboxModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    MatProgressSpinnerModule,
+    MatOptionModule,
+    MatIconModule,
+    MatChipsModule,
+    MatTooltipModule,
+  ],
+  template: `
+    <form [formGroup]="{{formName}}" class="{{kebabCase}}-form">
+      {{#each formFields}}
+      
+      {{#if (eq type 'dropdown')}}
+      {{#if serviceExists}}
+      <!-- {{name}} Field (Foreign Key Dropdown) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <mat-select formControlName="{{name}}" [disabled]="loading{{capitalize serviceName}}()">
+          <mat-option *ngIf="loading{{capitalize serviceName}}()" disabled>
+            <mat-spinner diameter="16"></mat-spinner>
+            Loading {{referencedTable}}...
+          </mat-option>
+          <mat-option *ngFor="let item of {{serviceName}}Options()" [value]="item.value">
+            {{#if (eq referencedTable 'users')}}
+            \{{ item.label }}
+            {{else}}
+            \{{ item.label }}
+            {{/if}}
+          </mat-option>
+        </mat-select>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+        <mat-hint *ngIf="!loading{{capitalize serviceName}}() && {{serviceName}}Options().length === 0">
+          No {{referencedTable}} available
+        </mat-hint>
+      </mat-form-field>
+      {{else}}
+      <!-- {{name}} Field (FK Fallback - Text Input) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}} (ID)</mat-label>
+        <input matInput formControlName="{{name}}" placeholder="Enter {{referencedTable}} ID">
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+        <mat-hint>TODO: Generate {{referencedTable}} service for dropdown functionality</mat-hint>
+      </mat-form-field>
+      {{/if}}
+      {{/if}}
+
+      {{#if (eq type 'select')}}
+      <!-- {{name}} Field (Select) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <mat-select formControlName="{{name}}">
+          {{#each options}}
+          <mat-option value="{{value}}">{{label}}</mat-option>
+          {{/each}}
+        </mat-select>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'string')}}
+      <!-- {{name}} Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        {{#if (eq inputType 'textarea')}}
+        <textarea 
+          matInput 
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+          rows="3"
+        ></textarea>
+        {{else}}
+        <input 
+          matInput 
+          type="{{inputType}}"
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+          {{#if pattern}}pattern="{{pattern}}"{{/if}}
+          {{#if accept}}accept="{{accept}}"{{/if}}
+        >
+        {{/if}}
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+        {{#if maxLength}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('maxlength')">
+          {{label}} must be less than {{maxLength}} characters
+        </mat-error>
+        {{/if}}
+        {{#if pattern}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('pattern')">
+          {{label}} format is invalid
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'number')}}
+      <!-- {{name}} Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          type="number"
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+          {{#if step}}step="{{step}}"{{/if}}
+          {{#if min}}min="{{min}}"{{/if}}
+          {{#if max}}max="{{max}}"{{/if}}
+        >
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+        {{#if min}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('min')">
+          {{label}} must be at least {{min}}
+        </mat-error>
+        {{/if}}
+        {{#if max}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('max')">
+          {{label}} must be at most {{max}}
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'boolean')}}
+      <!-- {{name}} Field -->
+      <div class="checkbox-field">
+        <mat-checkbox formControlName="{{name}}">
+          {{label}}
+        </mat-checkbox>
+      </div>
+      {{/if}}
+
+      {{#if (eq type 'date')}}
+      <!-- {{name}} Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          [matDatepicker]="{{name}}Picker"
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+        >
+        <mat-datepicker-toggle matSuffix [for]="{{name}}Picker"></mat-datepicker-toggle>
+        <mat-datepicker #{{name}}Picker></mat-datepicker>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'json')}}
+      <!-- {{name}} Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}} (JSON)</mat-label>
+        <textarea 
+          matInput 
+          formControlName="{{name}}"
+          placeholder='{{placeholder}}'
+          rows="3"
+        ></textarea>
+        <mat-hint>Enter valid JSON object (optional)</mat-hint>
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('invalidJson')">
+          Invalid JSON format
+        </mat-error>
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'time')}}
+      <!-- {{name}} Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          type="time"
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+        >
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'datetime')}}
+      <!-- {{name}} Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          type="datetime-local"
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+        >
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'datetime-tz')}}
+      <!-- {{name}} Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}} (with timezone)</mat-label>
+        <input 
+          matInput 
+          type="datetime-local"
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+        >
+        <mat-hint>Timezone will be handled automatically</mat-hint>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'uuid')}}
+      <!-- {{name}} Field -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          formControlName="{{name}}"
+          placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+          pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+        >
+        <button matSuffix mat-icon-button type="button" (click)="generateUUID('{{name}}')" matTooltip="Generate UUID">
+          <mat-icon>refresh</mat-icon>
+        </button>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('pattern')">
+          Invalid UUID format
+        </mat-error>
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'bigint')}}
+      <!-- {{name}} Field (BigInt) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          type="number"
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+          min="0"
+        >
+        <mat-hint>Large integer values (up to 9,223,372,036,854,775,807)</mat-hint>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'currency')}}
+      <!-- {{name}} Field (Currency) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          type="number"
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+          step="0.01"
+          min="0"
+        >
+        <span matPrefix>$ &nbsp;</span>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('min')">
+          {{label}} must be a positive amount
+        </mat-error>
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'binary')}}
+      <!-- {{name}} Field (Binary/File) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          type="file"
+          formControlName="{{name}}"
+          accept="*/*"
+        >
+        <mat-hint>Upload any file type</mat-hint>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'xml')}}
+      <!-- {{name}} Field (XML) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}} (XML)</mat-label>
+        <textarea 
+          matInput 
+          formControlName="{{name}}"
+          placeholder='{{placeholder}}'
+          rows="4"
+        ></textarea>
+        <mat-hint>Enter valid XML content</mat-hint>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('invalidXml')">
+          Invalid XML format
+        </mat-error>
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'bit')}}
+      <!-- {{name}} Field (Bit) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+          pattern="[01]+"
+        >
+        <mat-hint>Enter binary digits (0 and 1 only)</mat-hint>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('pattern')">
+          Only binary digits (0 and 1) are allowed
+        </mat-error>
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'varbit')}}
+      <!-- {{name}} Field (Variable Bit) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+          pattern="[01]*"
+        >
+        <mat-hint>Enter variable-length binary digits (0 and 1)</mat-hint>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('pattern')">
+          Only binary digits (0 and 1) are allowed
+        </mat-error>
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'color')}}
+      <!-- {{name}} Field (Color) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          type="color"
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+        >
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'percentage')}}
+      <!-- {{name}} Field (Percentage) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          type="number"
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+          min="0"
+          max="100"
+          step="0.01"
+        >
+        <span matSuffix>%</span>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('min')">
+          {{label}} must be at least 0%
+        </mat-error>
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('max')">
+          {{label}} must be at most 100%
+        </mat-error>
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'array')}}
+      <!-- {{name}} Field (Array) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}} (Array)</mat-label>
+        <textarea 
+          matInput 
+          formControlName="{{name}}"
+          placeholder='{{placeholder}}'
+          rows="3"
+        ></textarea>
+        <mat-hint>Enter comma-separated values</mat-hint>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{#if (eq type 'interval')}}
+      <!-- {{name}} Field (Interval) -->
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{label}}</mat-label>
+        <input 
+          matInput 
+          formControlName="{{name}}"
+          placeholder="{{placeholder}}"
+        >
+        <mat-hint>Format: "1 day", "2 hours 30 minutes", etc.</mat-hint>
+        {{#if required}}
+        <mat-error *ngIf="{{formName}}.get('{{name}}')?.hasError('required')">
+          {{label}} is required
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{/each}}
+
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button 
+          mat-button 
+          type="button"
+          (click)="onCancel()"
+          [disabled]="loading"
+        >
+          Cancel
+        </button>
+        <button 
+          mat-raised-button 
+          color="primary" 
+          type="button"
+          (click)="onSubmit()"
+          [disabled]="{{formName}}.invalid || loading || (mode === 'edit' && !hasChanges())"
+        >
+          <mat-spinner diameter="20" class="inline-spinner" *ngIf="loading"></mat-spinner>
+          \{{ mode === 'create' ? 'Create' : 'Update' }} {{title}}
+        </button>
+      </div>
+    </form>
+  `,
+  styles: [`
+    .{{kebabCase}}-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 16px 0;
+    }
+
+    .full-width {
+      width: 100%;
+    }
+
+    .checkbox-field {
+      margin: 8px 0;
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(0, 0, 0, 0.12);
+    }
+
+    .inline-spinner {
+      margin-right: 8px;
+    }
+
+    @media (max-width: 768px) {
+      .form-actions {
+        flex-direction: column;
+        gap: 8px;
+      }
+    }
+  `]
+})
+export class {{PascalCase}}FormComponent implements OnInit, OnChanges {
+  private fb = inject(FormBuilder);
+  {{#if hasForeignKeys}}
+  {{#each foreignKeyServices}}
+  {{#if exists}}
+  // CRUD-GENERATOR-TAG: Foreign Key Service Injection
+  private {{serviceName}} = inject({{serviceClass}});
+  {{/if}}
+  {{/each}}
+  {{/if}}
+
+  @Input() mode: {{PascalCase}}FormMode = 'create';
+  @Input() initialData?: {{PascalCase}};
+  @Input() loading = false;
+
+  @Output() formSubmit = new EventEmitter<{{PascalCase}}FormData>();
+  @Output() formCancel = new EventEmitter<void>();
+
+  private originalFormValue: any;
+  {{#if hasForeignKeys}}
+  {{#each foreignKeyServices}}
+  // CRUD-GENERATOR-TAG: Foreign Key Options State
+  {{serviceName}}Options = signal<any[]>([]);
+  loading{{capitalize serviceName}} = signal<boolean>(false);
+  {{/each}}
+  {{/if}}
+
+  {{#if hasJsonFields}}
+  // Custom JSON validator
+  private jsonValidator(control: AbstractControl) {
+    if (!control.value) {
+      return null; // Empty is valid (optional field)
+    }
+    
+    try {
+      JSON.parse(control.value);
+      return null; // Valid JSON
+    } catch (error) {
+      return { invalidJson: true }; // Invalid JSON
+    }
+  }
+  {{/if}}
+
+  {{formName}}: FormGroup = this.fb.group({
+    {{#each formFields}}
+    {{name}}: [
+      {{#if defaultValue}}'{{defaultValue}}'{{else}}{{#if (eq type 'boolean')}}false{{else}}''{{/if}}{{/if}},
+      [
+        {{#if required}}Validators.required{{/if}}{{#if maxLength}}{{#if required}}, {{/if}}Validators.maxLength({{maxLength}}){{/if}}{{#if min}}{{#if (or required maxLength)}}, {{/if}}Validators.min({{min}}){{/if}}{{#if max}}{{#if (or required maxLength min)}}, {{/if}}Validators.max({{max}}){{/if}}{{#if (eq type 'json')}}{{#if (or required maxLength min max)}}, {{/if}}this.jsonValidator.bind(this){{/if}}
+      ]
+    ]{{#unless @last}},{{/unless}}
+    {{/each}}
+  });
+
+  ngOnInit() {
+    {{#if hasForeignKeys}}
+    {{#each foreignKeyServices}}
+    {{#if exists}}
+    // CRUD-GENERATOR-TAG: Load Foreign Key Options
+    this.load{{capitalize referencedTable}}();
+    {{/if}}
+    {{/each}}
+    {{/if}}
+    if (this.mode === 'edit' && this.initialData) {
+      this.populateForm(this.initialData);
+    }
+  }
+
+  {{#if hasForeignKeys}}
+  {{#each foreignKeyServices}}
+  {{#if exists}}
+  // CRUD-GENERATOR-TAG: Foreign Key Data Loading Method
+  private async load{{capitalize referencedTable}}() {
+    this.loading{{capitalize serviceName}}.set(true);
+    try {
+      const response = await this.{{serviceName}}.getDropdownOptions();
+      this.{{serviceName}}Options.set(response || []);
+    } catch (error) {
+      console.error('Failed to load {{serviceName}}:', error);
+      this.{{serviceName}}Options.set([]);
+    } finally {
+      this.loading{{capitalize serviceName}}.set(false);
+    }
+  }
+  {{/if}}
+  {{/each}}
+  {{/if}}
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['initialData'] && this.initialData && this.mode === 'edit') {
+      this.populateForm(this.initialData);
+    }
+  }
+
+  private populateForm({{camelCase moduleName}}: {{PascalCase}}) {
+    const formValue = {
+      {{#each formFields}}
+      {{#if (eq type 'json')}}
+      {{name}}: {{../camelCase}}.{{name}} ? JSON.stringify({{../camelCase}}.{{name}}, null, 2) : ''{{#unless @last}},{{/unless}}
+      {{else if (or (eq type 'datetime') (eq type 'datetime-tz'))}}
+      {{name}}: formatDateTimeForInput({{../camelCase}}.{{name}}){{#unless @last}},{{/unless}}
+      {{else if (eq type 'date')}}
+      {{name}}: {{../camelCase}}.{{name}} ? new Date({{../camelCase}}.{{name}}) : null{{#unless @last}},{{/unless}}
+      {{else}}
+      {{name}}: {{../camelCase}}.{{name}}{{#unless @last}},{{/unless}}
+      {{/if}}
+      {{/each}}
+    };
+    
+    this.{{formName}}.patchValue(formValue);
+    this.originalFormValue = this.{{formName}}.value;
+  }
+
+  hasChanges(): boolean {
+    if (this.mode === 'create') return true;
+    const currentValue = this.{{formName}}.value;
+    return JSON.stringify(currentValue) !== JSON.stringify(this.originalFormValue);
+  }
+
+  onSubmit() {
+    if (this.{{formName}}.valid) {
+      const formData = { ...this.{{formName}}.value } as {{PascalCase}}FormData;
+      
+      {{#if hasJsonFields}}
+      // Parse JSON fields
+      {{#each formFields}}
+      {{#if (eq type 'json')}}
+      if (formData.{{name}} && typeof formData.{{name}} === 'string') {
+        try {
+          formData.{{name}} = JSON.parse(formData.{{name}});
+        } catch (error) {
+          formData.{{name}} = {};
+        }
+      } else if (!formData.{{name}}) {
+        formData.{{name}} = {};
+      }
+      {{/if}}
+      {{/each}}
+      {{/if}}
+
+      {{#if hasDateTimeFields}}
+      // Convert datetime-local format back to ISO strings for submission
+      {{#each formFields}}
+      {{#if (or (eq type 'datetime') (eq type 'datetime-tz'))}}
+      if (formData.{{name}}) {
+        formData.{{name}} = formatDateTimeForSubmission(formData.{{name}});
+      }
+      {{/if}}
+      {{/each}}
+      {{/if}}
+
+      {{#if hasDateFields}}
+      // Convert date fields to date-only format for submission
+      {{#each formFields}}
+      {{#if (eq type 'date')}}
+      if (formData.{{name}}) {
+        formData.{{name}} = formatDateForSubmission(formData.{{name}});
+      }
+      {{/if}}
+      {{/each}}
+      {{/if}}
+      
+      this.formSubmit.emit(formData);
+    }
+  }
+
+  onCancel() {
+    this.formCancel.emit();
+  }
+
+  {{#if hasNewFieldTypes}}
+  // UUID generation method
+  generateUUID(fieldName: string) {
+    const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+    const formControl = this.{{formName}};
+    formControl.get(fieldName)?.setValue(uuid);
+  }
+  {{/if}}
+}

@@ -1,0 +1,61 @@
+{
+  "name": "@aegisx/crud-generator",
+  "version": "2.0.0",
+  "description": "CRUD Generator for AegisX Platform - Professional code generation with interactive CLI and template management",
+  "main": "lib/index.js",
+  "bin": {
+    "aegisx-crud": "./bin/cli.js",
+    "crud-generator": "./bin/cli.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "templates/",
+    "docs/",
+    ".crudgen.json.example"
+  ],
+  "scripts": {
+    "test": "jest",
+    "lint": "eslint lib/",
+    "build": "echo 'No build needed for CLI tool'"
+  },
+  "keywords": [
+    "crud",
+    "generator",
+    "aegisx",
+    "fastify",
+    "angular",
+    "typescript",
+    "cli",
+    "code-generator",
+    "template",
+    "interactive"
+  ],
+  "author": "AegisX Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aegisx/crud-generator"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "handlebars": "^4.7.8",
+    "chalk": "^4.1.2",
+    "ora": "^5.4.1",
+    "inquirer": "^8.2.6",
+    "dotenv": "^16.0.0",
+    "knex": "^2.0.0",
+    "pg": "^8.0.0",
+    "exceljs": "^4.4.0",
+    "fast-csv": "^5.0.1",
+    "csv-writer": "^1.6.0",
+    "pdfmake": "^0.2.10"
+  },
+  "devDependencies": {
+    "jest": "^30.0.2",
+    "eslint": "^9.34.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

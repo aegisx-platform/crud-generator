@@ -1,0 +1,42 @@
+{
+  "name": "v1",
+  "version": "1.0.0",
+  "description": "Legacy Angular template - Traditional component structure",
+  "author": "AegisX Team",
+  "type": "frontend",
+  "framework": "angular",
+  "angularVersion": "17+",
+  "default": false,
+  "deprecated": true,
+  "files": [
+    {
+      "template": "list.component.hbs",
+      "output": "components/{{kebabCase tableName}}-list.component.ts",
+      "description": "Main list component"
+    },
+    {
+      "template": "form.component.hbs",
+      "output": "components/{{kebabCase tableName}}-form.component.ts",
+      "description": "Form component"
+    },
+    {
+      "template": "service.hbs",
+      "output": "services/{{kebabCase tableName}}.service.ts",
+      "description": "Angular service"
+    },
+    {
+      "template": "types.hbs",
+      "output": "types/{{kebabCase tableName}}.types.ts",
+      "description": "TypeScript interfaces"
+    }
+  ],
+  "dependencies": {
+    "@angular/core": "^17.0.0",
+    "@angular/material": "^17.0.0"
+  },
+  "features": {
+    "signals": false,
+    "standaloneComponents": true,
+    "materialDesign": true
+  }
+}

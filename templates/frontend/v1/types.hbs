@@ -1,0 +1,201 @@
+// ===== CORE ENTITY TYPES =====
+
+export interface {{PascalCase}} {
+  {{#each columns}}
+  {{name}}{{#if isNullable}}?{{/if}}: {{#if (or (contains type 'timestamp') (eq type 'date'))}}string{{else if (eq type 'jsonb')}}Record<string, any>{{else if (eq type 'json')}}Record<string, any>{{else if (eq tsType 'Record<string, any>')}}Record<string, any>{{else if (contains tsType 'Record&lt;string, any&gt;')}}Record<string, any>{{else if (eq tsType 'string')}}string{{else if (eq tsType 'number')}}number{{else if (eq tsType 'boolean')}}boolean{{else}}string{{/if}}{{#if isNullable}} | null{{/if}};
+  {{/each}}
+}
+
+export interface Create{{PascalCase}}Request {
+  {{#each columns}}
+  {{#unless isPrimaryKey}}
+  {{#unless (eq name 'created_at')}}
+  {{#unless (eq name 'updated_at')}}
+  {{name}}{{#if isNullable}}?{{/if}}: {{#if (or (contains type 'timestamp') (eq type 'date'))}}string{{else if (eq type 'jsonb')}}Record<string, any>{{else if (eq type 'json')}}Record<string, any>{{else if (eq tsType 'Record<string, any>')}}Record<string, any>{{else if (contains tsType 'Record&lt;string, any&gt;')}}Record<string, any>{{else if (eq tsType 'string')}}string{{else if (eq tsType 'number')}}number{{else if (eq tsType 'boolean')}}boolean{{else}}string{{/if}}{{#if isNullable}} | null{{/if}};
+  {{/unless}}
+  {{/unless}}
+  {{/unless}}
+  {{/each}}
+}
+
+export interface Update{{PascalCase}}Request {
+  {{#each columns}}
+  {{#unless isPrimaryKey}}
+  {{#unless (eq name 'created_at')}}
+  {{#unless (eq name 'updated_at')}}
+  {{name}}?: {{#if (or (contains type 'timestamp') (eq type 'date'))}}string{{else if (eq type 'jsonb')}}Record<string, any>{{else if (eq type 'json')}}Record<string, any>{{else if (eq tsType 'Record<string, any>')}}Record<string, any>{{else if (contains tsType 'Record&lt;string, any&gt;')}}Record<string, any>{{else if (eq tsType 'string')}}string{{else if (eq tsType 'number')}}number{{else if (eq tsType 'boolean')}}boolean{{else}}string{{/if}}{{#if isNullable}} | null{{/if}};
+  {{/unless}}
+  {{/unless}}
+  {{/unless}}
+  {{/each}}
+}
+
+// ===== QUERY TYPES =====
+
+export interface List{{PascalCase}}Query {
+  // Pagination
+  page?: number;
+  limit?: number;
+  
+  // Search
+  search?: string;
+  
+  // Sort
+  sort?: string; // Multiple sort support: field1:desc,field2:asc
+  
+  // Field selection
+  fields?: string[]; // Array of field names to return
+  
+  // Include related data
+  include?: string | string[];
+  
+  // Smart field-based filters
+  {{#each columns}}
+  {{#unless isPrimaryKey}}
+  {{#if (or (contains type 'timestamp') (eq type 'date'))}}
+  // Date/DateTime filtering for {{name}}
+  {{name}}?: string; // ISO date string for exact match
+  {{name}}_min?: string; // ISO date string for range start
+  {{name}}_max?: string; // ISO date string for range end
+  {{else if (eq tsType 'boolean')}}
+  // Boolean filtering for {{name}}
+  {{name}}?: boolean;
+  {{else if (eq tsType 'number')}}
+  // Numeric filtering for {{name}}
+  {{name}}?: number; // Exact match
+  {{name}}_min?: number; // Range start
+  {{name}}_max?: number; // Range end
+  {{else if (eq tsType 'string')}}
+  // String filtering for {{name}}
+  {{name}}?: string; // Exact match
+  {{/if}}
+  {{/unless}}
+  {{/each}}
+}
+
+// ===== API RESPONSE TYPES =====
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+  meta?: {
+    timestamp: string;
+    version: string;
+    requestId: string;
+    environment: string;
+  };
+}
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext?: boolean;
+  hasPrev?: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean;
+  data: T[];
+  pagination: PaginationMeta;
+  meta?: {
+    timestamp: string;
+    version: string;
+    requestId: string;
+    environment: string;
+  };
+}
+
+{{#if includeEnhanced}}
+// ===== ENHANCED TYPES =====
+
+export interface DropdownOption {
+  value: string;
+  label: string;
+  disabled?: boolean;
+}
+
+export interface DropdownResponse {
+  options: DropdownOption[];
+  total: number;
+}
+
+export interface BulkOperationSummary {
+  total: number;
+  successful: number;
+  failed: number;
+  errors: Array<{
+    index: number;
+    error: string;
+    data?: any;
+  }>;
+}
+
+export interface BulkResponse {
+  success: boolean;
+  data: {{PascalCase}}[];
+  summary: BulkOperationSummary;
+  message: string;
+  meta?: {
+    timestamp: string;
+    version: string;
+    requestId: string;
+    environment: string;
+  };
+}
+{{/if}}
+
+{{#if includeFull}}
+// ===== FULL PACKAGE TYPES =====
+
+export interface ValidationError {
+  field: string;
+  message: string;
+  code: string;
+  value?: any;
+}
+
+export interface ValidationResponse {
+  valid: boolean;
+  errors?: ValidationError[];
+}
+
+export interface UniquenessResponse {
+  unique: boolean;
+  message?: string;
+}
+
+export interface StatsResponse {
+  total: number;
+  // Additional stats can be added based on module needs
+  [key: string]: number;
+}
+{{/if}}
+
+// ===== UTILITY TYPES =====
+
+export type {{PascalCase}}Field = keyof {{PascalCase}};
+export type {{PascalCase}}SortField = {{PascalCase}}Field;
+
+export interface {{PascalCase}}ListOptions {
+  page?: number;
+  limit?: number;
+  sort?: string;
+  fields?: {{PascalCase}}Field[];
+  search?: string;
+}
+
+{{#unless includeEnhanced}}
+// ===== BASIC BULK OPERATIONS =====
+
+export interface BulkResponse {
+  success: boolean;
+  created?: number;
+  updated?: number;
+  deleted?: number;
+  errors?: any[];
+  message?: string;
+}
+{{/unless}}

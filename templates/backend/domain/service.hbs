@@ -1,0 +1,669 @@
+import { BaseService } from '../../../shared/services/base.service';
+import { {{ModuleName}}Repository } from '../repositories/{{kebabCase currentRoute.camelName}}.repository';
+{{#if withEvents}}
+import { EventService } from '../../../shared/websocket/event.service';
+import { CrudEventHelper } from '../../../shared/websocket/crud-event-helper';
+{{/if}}
+import {
+  type {{ModuleName}},
+  type Create{{ModuleName}},
+  type Update{{ModuleName}},
+  type Get{{ModuleName}}Query,
+  type List{{ModuleName}}Query
+} from '../types/{{kebabCase currentRoute.camelName}}.types';
+
+/**
+ * {{ModuleName}} Service
+ * 
+ * Following Fastify + BaseService pattern:
+ * - Extends BaseService for standard CRUD operations
+ * - Proper dependency injection through constructor
+ * - Optional EventService integration for real-time features
+ * - Business logic hooks for validation and processing
+ */
+export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{ModuleName}}, Update{{ModuleName}}> {
+  {{#if withEvents}}
+  private eventHelper?: CrudEventHelper;
+  {{/if}}
+
+  constructor(
+    private {{moduleName}}Repository: {{ModuleName}}Repository,
+    {{#if withEvents}}private eventService?: EventService{{/if}}
+  ) {
+    super({{moduleName}}Repository);
+    
+    {{#if withEvents}}
+    // Initialize event helper using Fastify pattern
+    if (eventService) {
+      this.eventHelper = eventService.for('{{moduleName}}', '{{moduleName}}');
+    }
+    {{/if}}
+  }
+
+  /**
+   * Get {{moduleName}} by ID with optional query parameters
+   */
+  async findById(id: string | number, options: Get{{ModuleName}}Query = {}): Promise<{{ModuleName}} | null> {
+    const {{moduleName}} = await this.getById(id);
+    
+    if ({{moduleName}}) {
+      // Handle query options (includes, etc.)
+      if (options.include) {
+        // Add relationship loading logic here
+      }
+      
+      {{#if withEvents}}
+      // Emit read event for monitoring/analytics
+      if (this.eventHelper) {
+        await this.eventHelper.emitCustom('read', {{moduleName}});
+      }
+      {{/if}}
+    }
+
+    return {{moduleName}};
+  }
+
+  /**
+   * Get paginated list with filtering and sorting
+   */
+  async findMany(options: List{{ModuleName}}Query = {}): Promise<{
+    data: {{ModuleName}}[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
+    const result = await this.getList(options);
+    
+    {{#if withEvents}}
+    // Emit bulk read event
+    if (this.eventHelper) {
+      await this.eventHelper.emitCustom('bulk_read', {
+        count: result.data.length,
+        filters: options
+      });
+    }
+    {{/if}}
+    
+    return result;
+  }
+
+  /**
+   * Create new {{moduleName}}
+   */
+  async create(data: Create{{ModuleName}}): Promise<{{ModuleName}}> {
+    const {{moduleName}} = await super.create(data);
+    
+    {{#if withEvents}}
+    // Emit created event for real-time updates
+    if (this.eventHelper) {
+      await this.eventHelper.emitCreated({{moduleName}});
+    }
+    {{/if}}
+    
+    return {{moduleName}};
+  }
+
+  /**
+   * Update existing {{moduleName}}
+   */
+  async update(id: string | number, data: Update{{ModuleName}}): Promise<{{ModuleName}} | null> {
+    const {{moduleName}} = await super.update(id, data);
+    
+    {{#if withEvents}}
+    if ({{moduleName}} && this.eventHelper) {
+      await this.eventHelper.emitUpdated({{moduleName}});
+    }
+    {{/if}}
+    
+    return {{moduleName}};
+  }
+
+  /**
+   * Delete {{moduleName}}
+   */
+  async delete(id: string | number): Promise<boolean> {
+    try {
+      console.log('Attempting to delete {{moduleName}} with ID:', id);
+      
+      // Check if {{moduleName}} exists first
+      const existing = await this.{{moduleName}}Repository.findById(id);
+      if (!existing) {
+        console.log('{{ModuleName}} not found for deletion:', id);
+        return false;
+      }
+      
+      console.log('Found {{moduleName}} to delete:', existing.{{#if displayNameField}}{{displayNameField}}{{else}}id{{/if}});
+      
+      {{#if withEvents}}
+      // Get entity before deletion for event emission
+      const {{moduleName}} = await this.getById(id);
+      {{/if}}
+      
+      // Direct repository call to avoid base service complexity
+      const deleted = await this.{{moduleName}}Repository.delete(id);
+      
+      console.log('Delete result:', deleted);
+      
+      {{#if withEvents}}
+      if (deleted && {{moduleName}} && this.eventHelper) {
+        await this.eventHelper.emitDeleted({{moduleName}}.id);
+      }
+      {{/if}}
+      
+      if (deleted) {
+        console.log('{{ModuleName}} deleted successfully:', { id, {{#if displayNameField}}{{displayNameField}}: existing.{{displayNameField}}{{else}}name: existing.{{#each columns}}{{#if (or (eq name 'name') (eq name 'title') (eq name 'display_name'))}}{{name}}{{/if}}{{/each}}{{/if}} });
+      }
+      
+      return deleted;
+    } catch (error) {
+      console.error('Error deleting {{moduleName}}:', error);
+      return false;
+    }
+  }
+
+  // ===== BUSINESS LOGIC HOOKS =====
+  // Override these methods in child classes for custom validation/processing
+
+  /**
+   * Validate data before creating {{moduleName}}
+   */
+  protected async validateCreate(data: Create{{ModuleName}}): Promise<void> {
+    // Add custom validation logic here
+    {{#each columns}}
+    {{#if isRequired}}
+    if (!data.{{camelCase name}}?.toString().trim()) {
+      throw new Error('{{displayName}} is required');
+    }
+    {{/if}}
+    {{/each}}
+  }
+
+  /**
+   * Process data before creation
+   */
+  protected async beforeCreate(data: Create{{ModuleName}}): Promise<Create{{ModuleName}}> {
+    // Add custom business logic here
+    return {
+      ...data,
+      // Add default values or processing
+    };
+  }
+
+  /**
+   * Execute logic after {{moduleName}} creation
+   */
+  protected async afterCreate({{moduleName}}: {{ModuleName}}, _originalData: Create{{ModuleName}}): Promise<void> {
+    // Add post-creation logic (notifications, logging, etc.)
+    console.log('{{ModuleName}} created:', JSON.stringify({{moduleName}}), '(ID: ' + {{moduleName}}.id + ')');
+  }
+
+  /**
+   * Validate before deletion
+   */
+  protected async validateDelete(_id: string | number, existing: {{ModuleName}}): Promise<void> {
+    // Add deletion validation logic here
+    // Example: Prevent deletion if entity has dependent records
+    {{#each columns}}
+    {{#if (eq name 'status')}}
+    {{#if (or (eq tsType 'boolean') (eq type 'boolean'))}}
+    if (existing.status === true) {
+      throw new Error('Cannot delete active {{moduleName}}');
+    }
+    {{else}}
+      {{#if (hasConstraints name)}}
+        {{#with (getConstraintValue name 1)}}
+    if (existing.status === '{{this}}') {
+      throw new Error('Cannot delete {{this}} {{moduleName}}');
+    }
+        {{else}}
+          {{#with (getConstraintValue name 0)}}
+    if (existing.status && existing.status !== '{{this}}') {
+      throw new Error('Cannot delete {{moduleName}} with current status');
+    }
+          {{/with}}
+        {{/with}}
+      {{else}}
+    // No status constraints found - manual validation required
+    if (existing.status) {
+      throw new Error('Cannot delete {{moduleName}} - please verify status manually');
+    }
+      {{/if}}
+    {{/if}}
+    {{/if}}
+    {{/each}}
+  }
+
+{{#if (or (eq package 'enterprise') (eq package 'full'))}}
+
+  // ===== ENHANCED CRUD METHODS =====
+
+  /**
+   * Get dropdown options for UI components
+   */
+  async getDropdownOptions(options: any = {}): Promise<{
+    options: Array<{ value: string | number; label: string; disabled?: boolean }>;
+    total: number;
+  }> {
+    const { limit = 100, search, labelField = '{{defaultLabelField}}', valueField = 'id' } = options;
+    
+    const result = await this.{{moduleName}}Repository.list({
+      limit,
+      search,
+      sort: `${labelField}:asc`
+    });
+
+    const dropdownOptions = result.data.map(item => ({
+      value: item[valueField],
+      label: item[labelField] || `${item.id}`,
+      {{#if hasStatusField}}disabled: item.is_active === false{{else}}disabled: false{{/if}}
+    }));
+
+    return {
+      options: dropdownOptions,
+      total: result.pagination.total
+    };
+  }
+
+  /**
+   * Bulk create multiple {{moduleName}}s
+   */
+  async bulkCreate(data: { items: Create{{ModuleName}}[] }): Promise<{
+    created: {{ModuleName}}[];
+    summary: { successful: number; failed: number; errors: any[] };
+  }> {
+    const results: {{ModuleName}}[] = [];
+    const errors: any[] = [];
+
+    // Validate and process all items first
+    const validItems: Create{{ModuleName}}[] = [];
+    for (const item of data.items) {
+      try {
+        await this.validateCreate(item);
+        const processed = await this.beforeCreate(item);
+        validItems.push(processed);
+      } catch (error) {
+        errors.push({
+          item,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    // Bulk create valid items
+    if (validItems.length > 0) {
+      try {
+        // Use individual creates instead of createMany for debugging
+        for (const item of validItems) {
+          const created = await this.{{moduleName}}Repository.create(item);
+          results.push(created);
+        }
+        
+        // Call afterCreate for each created item
+        for (let i = 0; i < results.length; i++) {
+          try {
+            await this.afterCreate(results[i], validItems[i]);
+            {{#if withEvents}}
+            if (this.eventHelper) {
+              await this.eventHelper.emitCreated(results[i]);
+            }
+            {{/if}}
+          } catch (error) {
+            console.warn('Error in afterCreate:', error);
+          }
+        }
+      } catch (error) {
+        errors.push({
+          item: 'bulk_operation',
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    return {
+      created: results,
+      summary: {
+        successful: results.length,
+        failed: errors.length,
+        errors
+      }
+    };
+  }
+
+  /**
+   * Bulk update multiple {{moduleName}}s
+   */
+  async bulkUpdate(data: { items: Array<{ id: string | number; data: Update{{ModuleName}} }> }): Promise<{
+    updated: {{ModuleName}}[];
+    summary: { successful: number; failed: number; errors: any[] };
+  }> {
+    const results: {{ModuleName}}[] = [];
+    const errors: any[] = [];
+
+    for (const item of data.items) {
+      try {
+        const updated = await this.update(item.id, item.data);
+        if (updated) {
+          results.push(updated);
+        }
+      } catch (error) {
+        errors.push({
+          item,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    return {
+      updated: results,
+      summary: {
+        successful: results.length,
+        failed: errors.length,
+        errors
+      }
+    };
+  }
+
+  /**
+   * Bulk delete multiple {{moduleName}}s
+   */
+  async bulkDelete(data: { ids: Array<string | number> }): Promise<{
+    deleted: Array<string | number>;
+    summary: { successful: number; failed: number; errors: any[] };
+  }> {
+    const results: Array<string | number> = [];
+    const errors: any[] = [];
+
+    for (const id of data.ids) {
+      try {
+        const deleted = await this.delete(id);
+        if (deleted) {
+          results.push(id);
+        }
+      } catch (error) {
+        errors.push({
+          id,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    return {
+      deleted: results,
+      summary: {
+        successful: results.length,
+        failed: errors.length,
+        errors
+      }
+    };
+  }
+
+  {{#if hasStatusField}}
+  /**
+   * Bulk update status for multiple {{moduleName}}s
+   */
+  async bulkUpdateStatus(data: { ids: Array<string | number>; status: boolean }): Promise<{
+    updated: {{ModuleName}}[];
+    summary: { successful: number; failed: number; errors: any[] };
+  }> {
+    const results: {{ModuleName}}[] = [];
+    const errors: any[] = [];
+
+    for (const id of data.ids) {
+      try {
+        const updated = await this.update(id, { is_active: data.status } as Update{{ModuleName}});
+        if (updated) {
+          results.push(updated);
+        }
+      } catch (error) {
+        errors.push({
+          id,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    return {
+      updated: results,
+      summary: {
+        successful: results.length,
+        failed: errors.length,
+        errors
+      }
+    };
+  }
+
+  /**
+   * Activate {{moduleName}}
+   */
+  async activate(id: string | number, options: any = {}): Promise<{{ModuleName}} | null> {
+    return this.update(id, { is_active: true } as Update{{ModuleName}});
+  }
+
+  /**
+   * Deactivate {{moduleName}}
+   */
+  async deactivate(id: string | number, options: any = {}): Promise<{{ModuleName}} | null> {
+    return this.update(id, { is_active: false } as Update{{ModuleName}});
+  }
+
+  /**
+   * Toggle {{moduleName}} status
+   */
+  async toggle(id: string | number, options: any = {}): Promise<{{ModuleName}} | null> {
+    const current = await this.getById(id);
+    if (!current) return null;
+
+    const newStatus = !current.is_active;
+    return this.update(id, { is_active: newStatus } as Update{{ModuleName}});
+  }
+  {{/if}}
+
+  {{#if smartStats}}
+  /**
+   * Get smart statistics based on detected field patterns
+   */
+  async getStats(): Promise<{
+    total: number;
+    {{#if hasStatusField}}
+    active?: number;
+    inactive?: number;
+    percentages?: {
+      active: number;
+      inactive: number;
+    };
+    {{/if}}
+    {{#if hasDateField}}
+    recentlyCreated?: number;
+    recentlyUpdated?: number;
+    {{/if}}
+  }> {
+    return this.{{moduleName}}Repository.getStats();
+  }
+  {{else}}
+  /**
+   * Get basic statistics (count only)
+   */
+  async getStats(): Promise<{
+    total: number;
+  }> {
+    return this.{{moduleName}}Repository.getStats();
+  }
+  {{/if}}
+
+  /**
+   * Get data for export with formatting
+   */
+  async getExportData(queryParams: any = {}, fields?: string[]): Promise<any[]> {
+    // Get specific IDs if provided
+    if (queryParams.ids && queryParams.ids.length > 0) {
+      // Get specific records by IDs
+      const records = await Promise.all(
+        queryParams.ids.map((id: string) => this.getById(id))
+      );
+      
+      // Return raw data - ExportService will handle formatting
+      return records.filter(record => record !== null);
+    }
+
+    // Separate filters from pagination parameters to avoid SQL errors
+    const { limit, offset, page, ...filters } = queryParams;
+    
+    // Build query parameters for data retrieval with proper pagination
+    const query: any = {
+      ...filters, // Only include actual filter parameters
+      limit: limit || 50000, // Max export limit for performance
+      page: 1 // Always start from first page for exports
+    };
+
+    // Get filtered data
+    const result = await this.{{moduleName}}Repository.list(query);
+    
+    // Return raw data - ExportService will handle formatting
+    return result.data;
+  }
+
+  /**
+   * Format single record for export
+   */
+  private formatExportRecord(record: {{ModuleName}}, fields?: string[]): any {
+    const formatted: any = {};
+
+    // Define all exportable fields
+    const exportableFields: { [key: string]: string | ((value: any) => any) } = {
+      {{#each columns}}
+      {{name}}: '{{#if label}}{{label}}{{else}}{{titleCase name}}{{/if}}',
+      {{/each}}
+    };
+
+    // If specific fields requested, use only those
+    const fieldsToExport = fields && fields.length > 0 
+      ? fields.filter(field => exportableFields.hasOwnProperty(field))
+      : Object.keys(exportableFields);
+
+    // Format each field
+    fieldsToExport.forEach(field => {
+      const fieldConfig = exportableFields[field];
+      let value = (record as any)[field];
+
+      // Apply field-specific formatting
+      if (typeof fieldConfig === 'function') {
+        value = fieldConfig(value);
+      } else {
+        // Apply default formatting based on field type
+        {{#each columns}}
+        {{#if (eq name field)}}
+        {{#if (eq dataType 'timestamp')}}
+        if (field === '{{name}}' && value) {
+          value = new Date(value).toLocaleString();
+        }
+        {{/if}}
+        {{#if (eq dataType 'date')}}
+        if (field === '{{name}}' && value) {
+          value = new Date(value).toLocaleDateString();
+        }
+        {{/if}}
+        {{#if (eq dataType 'boolean')}}
+        if (field === '{{name}}') {
+          value = value ? 'Yes' : 'No';
+        }
+        {{/if}}
+        {{#if (eq dataType 'json')}}
+        if (field === '{{name}}' && value && typeof value === 'object') {
+          value = JSON.stringify(value);
+        }
+        {{/if}}
+        {{/if}}
+        {{/each}}
+      }
+
+      // Use field label as key for export
+      const exportKey = typeof fieldConfig === 'string' ? fieldConfig : field;
+      formatted[exportKey] = value;
+    });
+
+    return formatted;
+  }
+{{/if}}
+
+{{#if (eq package 'full')}}
+
+  // ===== FULL PACKAGE METHODS =====
+
+  /**
+   * Validate data before save
+   */
+  async validate(data: { data: Create{{ModuleName}} }): Promise<{
+    valid: boolean;
+    errors: Array<{ field: string; message: string }>;
+  }> {
+    const errors: Array<{ field: string; message: string }> = [];
+
+    try {
+      await this.validateCreate(data.data);
+    } catch (error) {
+      errors.push({
+        field: 'general',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+
+    // Add specific field validations
+    {{#each columns}}
+    {{#if isRequired}}
+    if (!data.data.{{name}}) {
+      errors.push({
+        field: '{{name}}',
+        message: '{{displayName}} is required'
+      });
+    }
+    {{/if}}
+    {{/each}}
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * Check field uniqueness
+   */
+  async checkUniqueness(field: string, options: { value: string; excludeId?: string | number }): Promise<{
+    unique: boolean;
+    exists?: any;
+  }> {
+    const query: any = { [field]: options.value };
+    
+    // Add exclusion for updates
+    if (options.excludeId) {
+      query.excludeId = options.excludeId;
+    }
+
+    // Use field-specific find methods based on repository's isDisplayField logic
+    let existing: any = null;
+    
+    {{#each columns}}
+    {{#unless (or isPrimaryKey (eq name 'created_at') (eq name 'updated_at'))}}
+    {{#if (isDisplayField this)}}
+    if (field === '{{name}}' && options.value) {
+      existing = await this.{{../moduleName}}Repository.findBy{{pascalCase name}}(options.value);
+    }{{#unless @last}} else {{/unless}}
+    {{/if}}
+    {{/unless}}
+    {{/each}}
+    
+    // If updating (excludeId provided), ignore the current record
+    if (existing && options.excludeId && existing.id === options.excludeId) {
+      existing = null;
+    }
+    
+    return {
+      unique: !existing,
+      exists: existing || undefined
+    };
+  }
+{{/if}}
+}

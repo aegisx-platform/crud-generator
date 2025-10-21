@@ -1,0 +1,310 @@
+import { Type, Static } from '@sinclair/typebox';
+
+/**
+ * Export format options
+ */
+export const ExportFormatSchema = Type.Union([
+  Type.Literal('csv'),
+  Type.Literal('excel'),
+  Type.Literal('pdf')
+]);
+
+export type ExportFormat = Static<typeof ExportFormatSchema>;
+
+/**
+ * Export query parameters schema
+ */
+export const ExportQuerySchema = Type.Object({
+  // Required format parameter
+  format: ExportFormatSchema,
+  
+  // Optional parameters for filtering and customization
+  ids: Type.Optional(Type.Array(Type.String({ format: 'uuid' }), {
+    description: 'Array of UUIDs to export specific records'
+  })),
+  
+  filters: Type.Optional(Type.Record(Type.String(), Type.Any(), {
+    description: 'Filter conditions to apply to the export'
+  })),
+  
+  fields: Type.Optional(Type.Array(Type.String(), {
+    description: 'Specific fields to include in export'
+  })),
+  
+  filename: Type.Optional(Type.String({
+    minLength: 1,
+    maxLength: 255,
+    pattern: '^[a-zA-Z0-9._-]+$',
+    description: 'Custom filename (can include dots, underscores, and hyphens)'
+  })),
+  
+  includeMetadata: Type.Optional(Type.Boolean({
+    default: true,
+    description: 'Include export metadata (timestamp, filters, etc.)'
+  })),
+  
+  applyFilters: Type.Optional(Type.Boolean({
+    default: false,
+    description: 'Whether to apply current filters to export'
+  }))
+}, {
+  $id: 'ExportQuery',
+  description: 'Query parameters for data export endpoint'
+});
+
+export type ExportQuery = Static<typeof ExportQuerySchema>;
+
+/**
+ * Export request body schema (for POST requests with complex filters)
+ */
+export const ExportRequestSchema = Type.Object({
+  format: ExportFormatSchema,
+  
+  options: Type.Optional(Type.Object({
+    filename: Type.Optional(Type.String({
+      minLength: 1,
+      maxLength: 255
+    })),
+    
+    title: Type.Optional(Type.String({
+      minLength: 1,
+      maxLength: 500
+    })),
+    
+    includeMetadata: Type.Optional(Type.Boolean({ default: true }))
+  })),
+  
+  selection: Type.Optional(Type.Object({
+    ids: Type.Optional(Type.Array(Type.String({ format: 'uuid' }))),
+    
+    filters: Type.Optional(Type.Record(Type.String(), Type.Any())),
+    
+    fields: Type.Optional(Type.Array(Type.String())),
+    
+    orderBy: Type.Optional(Type.Object({
+      field: Type.String(),
+      direction: Type.Union([Type.Literal('asc'), Type.Literal('desc')])
+    })),
+    
+    limit: Type.Optional(Type.Number({
+      minimum: 1,
+      maximum: 50000,
+      description: 'Maximum number of records to export'
+    }))
+  }))
+}, {
+  $id: 'ExportRequest',
+  description: 'Request body for data export endpoint'
+});
+
+export type ExportRequest = Static<typeof ExportRequestSchema>;
+
+/**
+ * Export response schema
+ */
+export const ExportResponseSchema = Type.Object({
+  success: Type.Boolean(),
+  
+  filename: Type.String({
+    description: 'Name of the exported file'
+  }),
+  
+  format: ExportFormatSchema,
+  
+  recordCount: Type.Number({
+    minimum: 0,
+    description: 'Number of records exported'
+  }),
+  
+  fileSize: Type.Number({
+    minimum: 0,
+    description: 'Size of exported file in bytes'
+  }),
+  
+  exportedAt: Type.String({
+    format: 'date-time',
+    description: 'Timestamp when export was completed'
+  }),
+  
+  metadata: Type.Optional(Type.Object({
+    exportedBy: Type.Optional(Type.String()),
+    filtersApplied: Type.Optional(Type.Record(Type.String(), Type.Any())),
+    fieldsIncluded: Type.Optional(Type.Array(Type.String())),
+    totalAvailableRecords: Type.Optional(Type.Number())
+  }))
+}, {
+  $id: 'ExportResponse',
+  description: 'Response metadata for successful export'
+});
+
+export type ExportResponse = Static<typeof ExportResponseSchema>;
+
+/**
+ * Export field definition schema
+ */
+export const ExportFieldSchema = Type.Object({
+  key: Type.String({
+    description: 'Database field name'
+  }),
+  
+  label: Type.String({
+    description: 'Human-readable field label for export'
+  }),
+  
+  type: Type.Optional(Type.Union([
+    Type.Literal('string'),
+    Type.Literal('number'),
+    Type.Literal('date'),
+    Type.Literal('boolean'),
+    Type.Literal('json')
+  ])),
+  
+  format: Type.Optional(Type.String({
+    description: 'Custom format pattern for field values'
+  })),
+  
+  width: Type.Optional(Type.Number({
+    minimum: 1,
+    description: 'Column width for Excel/PDF exports'
+  }))
+}, {
+  $id: 'ExportField',
+  description: 'Field definition for export configuration'
+});
+
+export type ExportField = Static<typeof ExportFieldSchema>;
+
+/**
+ * Export configuration schema
+ */
+export const ExportConfigSchema = Type.Object({
+  enabled: Type.Boolean({
+    default: true,
+    description: 'Whether export functionality is enabled'
+  }),
+  
+  formats: Type.Array(ExportFormatSchema, {
+    minItems: 1,
+    description: 'Available export formats'
+  }),
+  
+  maxRecords: Type.Optional(Type.Number({
+    minimum: 1,
+    maximum: 100000,
+    default: 10000,
+    description: 'Maximum number of records that can be exported at once'
+  })),
+  
+  defaultFields: Type.Optional(Type.Array(ExportFieldSchema, {
+    description: 'Default field configuration for exports'
+  })),
+  
+  allowCustomFields: Type.Optional(Type.Boolean({
+    default: true,
+    description: 'Whether users can select custom fields for export'
+  })),
+  
+  requireAuth: Type.Optional(Type.Boolean({
+    default: true,
+    description: 'Whether export requires authentication'
+  })),
+  
+  permissions: Type.Optional(Type.Array(Type.String(), {
+    description: 'Required permissions for export functionality'
+  }))
+}, {
+  $id: 'ExportConfig',
+  description: 'Export configuration for a module'
+});
+
+export type ExportConfig = Static<typeof ExportConfigSchema>;
+
+/**
+ * Export error response schema
+ */
+export const ExportErrorSchema = Type.Object({
+  success: Type.Literal(false),
+  
+  error: Type.Object({
+    code: Type.String({
+      description: 'Error code for programmatic handling'
+    }),
+    
+    message: Type.String({
+      description: 'Human-readable error message'
+    }),
+    
+    details: Type.Optional(Type.Record(Type.String(), Type.Any(), {
+      description: 'Additional error details'
+    }))
+  }),
+  
+  timestamp: Type.String({
+    format: 'date-time'
+  })
+}, {
+  $id: 'ExportError',
+  description: 'Error response for failed export operations'
+});
+
+export type ExportError = Static<typeof ExportErrorSchema>;
+
+/**
+ * Export progress schema (for real-time updates)
+ */
+export const ExportProgressSchema = Type.Object({
+  id: Type.String({
+    description: 'Unique export job identifier'
+  }),
+  
+  status: Type.Union([
+    Type.Literal('pending'),
+    Type.Literal('processing'),
+    Type.Literal('completed'),
+    Type.Literal('failed')
+  ]),
+  
+  progress: Type.Number({
+    minimum: 0,
+    maximum: 100,
+    description: 'Export progress percentage'
+  }),
+  
+  recordsProcessed: Type.Number({
+    minimum: 0,
+    description: 'Number of records processed so far'
+  }),
+  
+  totalRecords: Type.Number({
+    minimum: 0,
+    description: 'Total number of records to process'
+  }),
+  
+  estimatedTimeRemaining: Type.Optional(Type.Number({
+    minimum: 0,
+    description: 'Estimated time remaining in seconds'
+  })),
+  
+  startedAt: Type.String({
+    format: 'date-time'
+  }),
+  
+  completedAt: Type.Optional(Type.String({
+    format: 'date-time'
+  }))
+}, {
+  $id: 'ExportProgress',
+  description: 'Real-time export progress information'
+});
+
+export type ExportProgress = Static<typeof ExportProgressSchema>;
+
+/**
+ * Common export response union
+ */
+export const ExportResultSchema = Type.Union([
+  ExportResponseSchema,
+  ExportErrorSchema
+]);
+
+export type ExportResult = Static<typeof ExportResultSchema>;

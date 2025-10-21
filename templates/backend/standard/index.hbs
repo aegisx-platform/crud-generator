@@ -1,0 +1,99 @@
+// Fastify Plugin
+import fp from 'fastify-plugin';
+import { FastifyInstance, FastifyPluginOptions } from 'fastify';
+import { {{ModuleName}}Controller } from './{{moduleName}}.controller';
+import { {{ModuleName}}Service } from './{{moduleName}}.service';
+import { {{ModuleName}}Repository } from './{{moduleName}}.repository';
+import { {{moduleName}}Routes } from './{{moduleName}}.routes';
+
+// Main Plugin Export
+export default fp(
+  async function {{moduleName}}Plugin(
+    fastify: FastifyInstance,
+    options: FastifyPluginOptions
+  ) {
+    // Register schemas using Fastify's built-in schema registry
+    if (fastify.hasDecorator('schemaRegistry')) {
+      (fastify as any).schemaRegistry.registerModuleSchemas(
+        '{{moduleName}}',
+        {} // schemas will be imported automatically
+      );
+    }
+
+    // Service instantiation following Fastify DI pattern
+    // Dependencies are accessed from Fastify instance decorators
+    const {{moduleName}}Repository = new {{ModuleName}}Repository((fastify as any).knex);
+    const {{moduleName}}Service = new {{ModuleName}}Service(
+      {{moduleName}}Repository{{#if withEvents}},
+      (fastify as any).eventService{{/if}}
+    );
+    const {{moduleName}}Controller = new {{ModuleName}}Controller({{moduleName}}Service);
+
+    // Register routes with controller dependency
+    await fastify.register({{moduleName}}Routes, {
+      controller: {{moduleName}}Controller,
+      prefix: options.prefix || '/{{tableName}}'
+    });
+
+    // Lifecycle hooks for monitoring
+    fastify.addHook('onReady', async () => {
+      fastify.log.info(`{{ModuleName}} module registered successfully`);
+    });
+
+    {{#if withEvents}}
+    // Cleanup event listeners on close
+    fastify.addHook('onClose', async () => {
+      fastify.log.info(`Cleaning up {{ModuleName}} module resources`);
+      // Add any cleanup logic here
+    });
+    {{/if}}
+  },
+  {
+    name: '{{moduleName}}-plugin',
+    dependencies: ['knex-plugin'{{#if withEvents}}, 'websocket-plugin'{{/if}}]
+  }
+);
+
+// Export all public interfaces and types
+export * from './{{moduleName}}.schemas';
+export * from './{{moduleName}}.types';
+export * from './{{moduleName}}.repository';
+export * from './{{moduleName}}.service';
+export * from './{{moduleName}}.controller';
+
+// Re-export commonly used types for external use
+export type {
+  {{ModuleName}},
+  Create{{ModuleName}},
+  Update{{ModuleName}},
+  {{ModuleName}}IdParam,
+  Get{{ModuleName}}Query,
+  List{{ModuleName}}Query,
+{{#if withEvents}}
+  {{ModuleName}}CreatedEvent,
+  {{ModuleName}}UpdatedEvent,
+  {{ModuleName}}DeletedEvent{{/if}}
+} from './{{moduleName}}.schemas';
+
+// Re-export repository and service interfaces
+export type { {{ModuleName}}Repository } from './{{moduleName}}.repository';
+export type { {{ModuleName}}Service } from './{{moduleName}}.service';
+
+{{#if withEvents}}
+// Event type definitions for external consumers (import {{ModuleName}} from schemas)
+import { {{ModuleName}} } from './{{moduleName}}.schemas';
+
+export interface {{ModuleName}}EventHandlers {
+  onCreated?: (data: {{ModuleName}}) => void | Promise<void>;
+  onUpdated?: (data: {{ModuleName}}) => void | Promise<void>;
+  onDeleted?: (data: { id: number | string }) => void | Promise<void>;
+}
+
+export interface {{ModuleName}}WebSocketSubscription {
+  subscribe(handlers: {{ModuleName}}EventHandlers): void;
+  unsubscribe(): void;
+}
+{{/if}}
+
+// Module name constant
+export const MODULE_NAME = '{{moduleName}}' as const;

@@ -1,0 +1,341 @@
+<div class="min-h-screen bg-gray-50 p-6">
+  <div class="max-w-7xl mx-auto space-y-6">
+    <!-- Breadcrumb -->
+    <ax-breadcrumb [items]="breadcrumbItems" [showIcons]="true"></ax-breadcrumb>
+
+    <!-- Header with Stats (hide stats when permission error) -->
+    <app-{{lowercase moduleName}}-list-header
+      [stats]="stats()"
+      [loading]="{{camelCase moduleName}}Service.loading()"
+      [permissionError]="{{camelCase moduleName}}Service.permissionError()"
+      [hasError]="!!{{camelCase moduleName}}Service.error()"
+      (createClicked)="openCreateDialog()"
+      (clearPermissionError)="{{camelCase moduleName}}Service.clearPermissionError()"
+    ></app-{{lowercase moduleName}}-list-header>
+
+    <!-- Filters Panel (hide when any error exists) -->
+    @if (!{{camelCase moduleName}}Service.error()) {
+      <app-{{lowercase moduleName}}-list-filters
+        [activeFilterCount]="getActiveFilterCount()"
+        [loading]="{{camelCase moduleName}}Service.loading()"
+        [(searchTerm)]="searchTerm"
+        [(quickFilter)]="quickFilter"
+        {{#each filters.string}}
+        [({{this.name}}Filter)]="{{this.name}}Filter"
+        {{/each}}
+        {{#each filters.boolean}}
+        [({{this.name}}Filter)]="{{this.name}}Filter"
+        {{/each}}
+        (searchClicked)="search()"
+        (refreshClicked)="refresh()"
+        (clearSearchClicked)="clearSearch()"
+        (applyFiltersClicked)="applyFilterImmediate()"
+        (clearAllClicked)="clearAllFilters()"
+        (quickFilterChange)="setQuickFilter($event)"
+        (dateFilterChange)="onDateFilterChange($event)"
+      >
+        <!-- Export Button Slot -->
+        <app-export
+          export
+          [exportService]="exportServiceAdapter"
+          [currentFilters]="getExportFilters()"
+          [selectedItems]="selectedItems()"
+          [availableFields]="availableExportFields"
+          [moduleName]="'{{lowercase moduleName}}'"
+          (exportStarted)="onExportStarted($event)"
+          (exportCompleted)="onExportCompleted($event)"
+        ></app-export>
+
+        <!-- Filter Chips Slot -->
+        <div filter-chips>
+          @if (searchTermSignal()) {
+            <span
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium"
+            >
+              <mat-icon class="!text-sm !w-4 !h-4">search</mat-icon>
+              Search: \{{ searchTermSignal() }}
+              <button
+                (click)="searchTermSignal.set('')"
+                class="hover:text-blue-900"
+              >
+                <mat-icon class="!text-sm !w-3 !h-3">close</mat-icon>
+              </button>
+            </span>
+          }
+          {{#each filters.boolean}}
+          @if ({{this.name}}FilterSignal() === true) {
+            <span
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-100 text-green-700 rounded-md text-xs font-medium"
+            >
+              <mat-icon class="!text-sm !w-4 !h-4">check_circle</mat-icon>
+              {{this.label}}: Yes
+              <button
+                (click)="
+                  {{this.name}}InputSignal.set(undefined);
+                  {{this.name}}FilterSignal.set(undefined);
+                  quickFilter = 'all'
+                "
+                class="hover:text-green-900"
+              >
+                <mat-icon class="!text-sm !w-3 !h-3">close</mat-icon>
+              </button>
+            </span>
+          }
+          @if ({{this.name}}FilterSignal() === false) {
+            <span
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-100 text-red-700 rounded-md text-xs font-medium"
+            >
+              <mat-icon class="!text-sm !w-4 !h-4">block</mat-icon>
+              {{this.label}}: No
+              <button
+                (click)="
+                  {{this.name}}InputSignal.set(undefined);
+                  {{this.name}}FilterSignal.set(undefined);
+                  quickFilter = 'all'
+                "
+                class="hover:text-red-900"
+              >
+                <mat-icon class="!text-sm !w-3 !h-3">close</mat-icon>
+              </button>
+            </span>
+          }
+          {{/each}}
+        </div>
+      </app-{{lowercase moduleName}}-list-filters>
+    }
+
+    <!-- Content Area: Show based on state priority -->
+    <!-- Priority 1: Error (403 or other errors) -->
+    @if ({{camelCase moduleName}}Service.error() && !{{camelCase moduleName}}Service.loading()) {
+      <ax-error-state
+        [statusCode]="{{camelCase moduleName}}Service.lastErrorStatus()"
+        [message]="{{camelCase moduleName}}Service.error() || ''"
+        [actions]="[
+          {
+            label: 'Try Again',
+            icon: 'refresh',
+            primary: true,
+            callback: refresh.bind(this),
+          },
+        ]"
+      >
+      </ax-error-state>
+    }
+
+    <!-- Priority 2: Loading (initial load) - with delay to prevent flicker -->
+    @else if (showLoadingIndicator() && dataSource.data.length === 0) {
+      <div class="bg-white rounded-lg border border-gray-200 p-12 text-center">
+        <mat-spinner class="!mx-auto" [diameter]="40"></mat-spinner>
+        <p class="text-sm text-gray-600 mt-4">Loading {{lowercase moduleName}}...</p>
+      </div>
+    }
+
+    <!-- Priority 3: Empty State (no data, no error, not loading) -->
+    @else if (!{{camelCase moduleName}}Service.loading() && dataSource.data.length === 0) {
+      <ax-empty-state
+        icon="menu_book"
+        title="No {{lowercase moduleName}} found"
+        [message]="
+          hasActiveFilters()
+            ? 'Try adjusting your search or filters'
+            : 'Get started by adding your first {{lowercase singularName}}'
+        "
+        [actions]="
+          hasActiveFilters()
+            ? [
+                {
+                  label: 'Clear filters',
+                  primary: true,
+                  callback: clearAllFilters.bind(this),
+                },
+              ]
+            : [
+                {
+                  label: 'Add your first {{lowercase singularName}}',
+                  icon: 'add',
+                  primary: true,
+                  callback: openCreateDialog.bind(this),
+                },
+              ]
+        "
+      >
+      </ax-empty-state>
+    }
+
+    <!-- Priority 4: Table with Data -->
+    @else {
+      <div
+        class="bg-white rounded-lg border border-gray-200 overflow-hidden tremor-table relative"
+      >
+        <!-- Loading Overlay (for refresh while data exists) - with delay -->
+        @if (showLoadingIndicator() && dataSource.data.length > 0) {
+          <div
+            class="absolute inset-0 bg-white/75 backdrop-blur-sm flex items-center justify-center z-10"
+          >
+            <div class="text-center">
+              <mat-spinner class="!mx-auto" [diameter]="40"></mat-spinner>
+              <p class="text-sm text-gray-600 mt-4">Refreshing...</p>
+            </div>
+          </div>
+        }
+
+        <!-- Bulk Actions -->
+        @if (selection.selected.length > 0) {
+          <div
+            class="bg-blue-50 border-b border-blue-200 px-5 py-3 flex items-center justify-between"
+          >
+            <span class="text-sm font-medium text-blue-900"
+              >\{{ selection.selected.length }} selected</span
+            >
+            <button
+              (click)="bulkDelete()"
+              class="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700"
+            >
+              Delete selected
+            </button>
+          </div>
+        }
+
+        <!-- Table Container -->
+        <div class="overflow-x-auto">
+          <table
+            mat-table
+            [dataSource]="dataSource"
+            matSort
+            multiTemplateDataRows
+            class="w-full"
+          >
+            <!-- Checkbox Column -->
+            <ng-container matColumnDef="select">
+              <th mat-header-cell *matHeaderCellDef class="w-12">
+                <mat-checkbox
+                  (change)="$event ? toggleAllRows() : null"
+                  [checked]="selection.hasValue() && isAllSelected()"
+                  [indeterminate]="selection.hasValue() && !isAllSelected()"
+                  aria-label="Select all {{lowercase moduleName}}"
+                ></mat-checkbox>
+              </th>
+              <td
+                mat-cell
+                *matCellDef="let row"
+                (click)="$event.stopPropagation()"
+              >
+                <mat-checkbox
+                  (change)="$event ? selection.toggle(row) : null"
+                  [checked]="selection.isSelected(row)"
+                ></mat-checkbox>
+              </td>
+            </ng-container>
+
+{{{columnsHtml}}}
+
+            <!-- Expanded Detail Column -->
+            <ng-container matColumnDef="expandedDetail">
+              <td
+                mat-cell
+                *matCellDef="let {{camelCase singularName}}"
+                [attr.colspan]="displayedColumns.length"
+                class="!p-0 !border-b-0"
+              >
+                @if (isRowExpanded({{camelCase singularName}})) {
+                  <div class="pl-16 pr-5 py-3 bg-gray-50/50" [@detailExpand]>
+                    <div class="max-w-4xl">
+                      <div class="flex items-start gap-2">
+                        <mat-icon class="text-gray-400 !text-base mt-0.5"
+                          >description</mat-icon
+                        >
+                        <div class="flex-1">
+                          <h4
+                            class="text-xs font-semibold text-gray-700 mb-1.5"
+                          >
+                            Description
+                          </h4>
+                          <p class="text-sm text-gray-600 leading-relaxed">
+                            \{{ {{camelCase singularName}}.description }}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </td>
+            </ng-container>
+
+            <!-- Actions Column -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef class="text-right w-20">
+                Actions
+              </th>
+              <td
+                mat-cell
+                *matCellDef="let {{camelCase singularName}}"
+                class="text-right"
+                (click)="$event.stopPropagation()"
+              >
+                <button
+                  type="button"
+                  mat-icon-button
+                  [matMenuTriggerFor]="actionMenu"
+                  matTooltip="Actions"
+                  matTooltipPosition="above"
+                  aria-label="More actions"
+                >
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+                <mat-menu #actionMenu="matMenu" [hasBackdrop]="false">
+                  <button
+                    type="button"
+                    mat-menu-item
+                    (click)="onView{{pascalCase singularName}}({{camelCase singularName}})"
+                  >
+                    <mat-icon>visibility</mat-icon><span>View</span>
+                  </button>
+                  <button
+                    type="button"
+                    mat-menu-item
+                    (click)="onEdit{{pascalCase singularName}}({{camelCase singularName}})"
+                  >
+                    <mat-icon>edit</mat-icon><span>Edit</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    mat-menu-item
+                    (click)="onDelete{{pascalCase singularName}}({{camelCase singularName}})"
+                  >
+                    <mat-icon class="text-red-600">delete</mat-icon
+                    ><span>Delete</span>
+                  </button>
+                </mat-menu>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: displayedColumns"
+              class="hover:bg-gray-50 cursor-pointer"
+              [attr.data-{{lowercase singularName}}-id]="row.id"
+              (click)="onView{{pascalCase singularName}}(row)"
+            ></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: ['expandedDetail']"
+              class="detail-row"
+            ></tr>
+          </table>
+        </div>
+
+        <!-- Paginator -->
+        <mat-paginator
+          [length]="{{camelCase moduleName}}Service.total{{pascalCase singularName}}()"
+          [pageSize]="25"
+          [pageSizeOptions]="[10, 25, 50, 100]"
+          [pageIndex]="0"
+          showFirstLastButtons
+          class="border-t border-gray-200"
+        ></mat-paginator>
+      </div>
+    }
+  </div>
+</div>

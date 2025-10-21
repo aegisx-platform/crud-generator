@@ -1,0 +1,188 @@
+import { CommonModule } from '@angular/common';
+import { Component, inject } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+
+import { {{pascalCase singularName}} } from '../types/{{kebabCase moduleName}}.types';
+
+export interface {{pascalCase singularName}}ViewDialogData {
+  {{camelCase moduleName}}: {{pascalCase singularName}};
+}
+
+@Component({
+  selector: 'app-{{kebabCase moduleName}}-view-dialog',
+  standalone: true,
+  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule],
+  template: `
+    <h2 mat-dialog-title>{{pascalCase singularName}} Details</h2>
+
+    <mat-dialog-content>
+      <div class="content-grid">
+        {{#each fieldGroups}}
+        <!-- {{this.title}} -->
+        <div class="section{{#if this.isMetadata}} section-metadata{{/if}}">
+          <h3 class="section-title">{{this.title}}</h3>
+
+          {{#each this.fields}}
+          <div class="field-row">
+            <label>{{this.label}}</label>
+            <div class="field-value">
+              {{#if (eq this.type 'string')}}
+              \{{ data.{{@root.camelCase}}.{{this.name}} || '-' }}
+              {{else if (eq this.type 'boolean')}}
+              @if (data.{{@root.camelCase}}.{{this.name}}) {
+                <span class="status status-success">
+                  <span class="status-dot"></span>
+                  {{this.trueLabel}}
+                </span>
+              } @else {
+                <span class="status status-gray">
+                  <span class="status-dot"></span>
+                  {{this.falseLabel}}
+                </span>
+              }
+              {{else if (eq this.type 'badge')}}
+              @if (data.{{@root.camelCase}}.{{this.name}}) {
+                <span class="badge badge-purple">\{{ data.{{@root.camelCase}}.{{this.name}} }}</span>
+              } @else {
+                <span>-</span>
+              }
+              {{else if (eq this.type 'date')}}
+              \{{ data.{{@root.camelCase}}.{{this.name}} | date: 'mediumDate' }}
+              {{else if (eq this.type 'datetime')}}
+              \{{ data.{{@root.camelCase}}.{{this.name}} | date: 'medium' }}
+              {{else if (eq this.type 'number')}}
+              \{{ data.{{@root.camelCase}}.{{this.name}} ?? '-' }}
+              {{else if (eq this.type 'price')}}
+              @if (
+                data.{{@root.camelCase}}.{{this.name}} !== null && data.{{@root.camelCase}}.{{this.name}} !== undefined
+              ) {
+                <span class="price"
+                  >\$\{{ data.{{@root.camelCase}}.{{this.name}} | number: '1.2-2' }}</span
+                >
+              } @else {
+                <span>-</span>
+              }
+              {{else if (eq this.type 'code')}}
+              <code>\{{ data.{{@root.camelCase}}.{{this.name}} }}</code>
+              {{/if}}
+            </div>
+          </div>
+          {{/each}}
+        </div>
+        {{/each}}
+      </div>
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end">
+      <button mat-button (click)="onClose()">Close</button>
+      <button mat-raised-button color="primary" (click)="onEdit()">
+        <mat-icon>edit</mat-icon>
+        Edit {{pascalCase singularName}}
+      </button>
+    </mat-dialog-actions>
+  `,
+  styles: [
+    `
+      .section {
+        margin-bottom: 1.5rem;
+      }
+
+      .section:last-child {
+        margin-bottom: 0;
+      }
+
+      .section-title {
+        margin: 0 0 0.75rem 0;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #666;
+      }
+
+      .field-row {
+        display: flex;
+        margin-bottom: 0.75rem;
+      }
+
+      .field-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .field-row label {
+        min-width: 140px;
+        font-size: 0.875rem;
+        color: #666;
+      }
+
+      .field-value {
+        flex: 1;
+        font-size: 0.875rem;
+      }
+
+      .badge-purple {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        background: #f3e8ff;
+        color: #7c3aed;
+        border-radius: 4px;
+        font-size: 0.75rem;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      .status-success .status-dot {
+        background: #16a34a;
+      }
+
+      .status-gray .status-dot {
+        background: #9ca3af;
+      }
+
+      code {
+        padding: 2px 6px;
+        background: #f5f5f5;
+        border-radius: 3px;
+        font-size: 0.85rem;
+        font-family: monospace;
+      }
+
+      .price {
+        font-weight: 600;
+        color: #059669;
+      }
+
+      .section-metadata {
+        background: #fafafa;
+        padding: 0.75rem;
+        border-radius: 4px;
+      }
+    `,
+  ],
+})
+export class {{pascalCase singularName}}ViewDialogComponent {
+  private dialogRef = inject(MatDialogRef<{{pascalCase singularName}}ViewDialogComponent>);
+  protected data = inject<{{pascalCase singularName}}ViewDialogData>(MAT_DIALOG_DATA);
+
+  onClose() {
+    this.dialogRef.close();
+  }
+
+  onEdit() {
+    this.dialogRef.close({ action: 'edit', data: this.data.{{camelCase moduleName}} });
+  }
+}

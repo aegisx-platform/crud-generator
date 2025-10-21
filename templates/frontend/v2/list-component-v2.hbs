@@ -1,0 +1,869 @@
+import { CommonModule } from '@angular/common';
+import {
+  ChangeDetectorRef,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  signal,
+  ViewChild,
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
+import { fromEventPattern } from 'rxjs';
+import {
+  trigger,
+  state,
+  style,
+  transition,
+  animate,
+} from '@angular/animations';
+
+// Material imports for table
+import { SelectionModel } from '@angular/cdk/collections';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import {
+  MatSort,
+  MatSortModule,
+  Sort,
+  SortDirection,
+} from '@angular/material/sort';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
+
+import {
+  AegisxNavigationItem,
+  AegisxEmptyStateComponent,
+  AegisxErrorStateComponent,
+  AxDialogService,
+  BreadcrumbComponent,
+} from '@aegisx/ui';
+import {
+  ExportOptions,
+  ExportService,
+  SharedExportComponent,
+} from '../../../shared/components/shared-export/shared-export.component';
+import { {{pascalCase singularName}}Service } from '../services/{{lowercase moduleName}}.service';
+import { {{pascalCase singularName}}, List{{pascalCase singularName}}Query } from '../types/{{lowercase moduleName}}.types';
+import { {{pascalCase singularName}}CreateDialogComponent } from './{{lowercase moduleName}}-create.dialog';
+import {
+  {{pascalCase singularName}}EditDialogComponent,
+  {{pascalCase singularName}}EditDialogData,
+} from './{{lowercase moduleName}}-edit.dialog';
+import {
+  {{pascalCase singularName}}ViewDialogComponent,
+  {{pascalCase singularName}}ViewDialogData,
+} from './{{lowercase moduleName}}-view.dialog';
+
+// Import child components
+import { {{pascalCase moduleName}}ListFiltersComponent } from './{{lowercase moduleName}}-list-filters.component';
+import { {{pascalCase moduleName}}ListHeaderComponent } from './{{lowercase moduleName}}-list-header.component';
+
+@Component({
+  selector: 'app-{{lowercase moduleName}}-list',
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterModule,
+    FormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatTableModule,
+    MatSortModule,
+    MatPaginatorModule,
+    MatCheckboxModule,
+    MatTooltipModule,
+    MatMenuModule,
+    SharedExportComponent,
+    BreadcrumbComponent,
+    // Child components
+    {{pascalCase moduleName}}ListHeaderComponent,
+    {{pascalCase moduleName}}ListFiltersComponent,
+    // AegisX UI components
+    AegisxEmptyStateComponent,
+    AegisxErrorStateComponent,
+  ],
+  templateUrl: './{{lowercase moduleName}}-list.component.html',
+  styleUrl: './{{lowercase moduleName}}-list.component.scss',
+  animations: [
+    trigger('detailExpand', [
+      state('collapsed', style({ height: '0px', minHeight: '0' })),
+      state('expanded', style({ height: '*' })),
+      transition(
+        'expanded <=> collapsed',
+        animate('225ms cubic-bezier(0.4, 0.0, 0.2, 1)'),
+      ),
+    ]),
+  ],
+})
+export class {{pascalCase moduleName}}ListComponent {
+  {{camelCase moduleName}}Service = inject({{pascalCase singularName}}Service);
+  private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
+  private axDialog = inject(AxDialogService);
+  private cdr = inject(ChangeDetectorRef);
+
+  // Breadcrumb configuration
+  breadcrumbItems: AegisxNavigationItem[] = [
+    {
+      id: 'home',
+      title: 'Home',
+      type: 'basic',
+      icon: 'home',
+      link: '/',
+    },
+    {
+      id: '{{lowercase moduleName}}',
+      title: '{{pascalCase moduleName}}',
+      type: 'basic',
+      icon: 'menu_book',
+    },
+  ];
+
+  // Mat-Table setup
+  displayedColumns: string[] = [
+    'select',
+{{#each displayColumns}}
+    '{{this.name}}',
+{{/each}}
+    'actions',
+  ];
+  dataSource = new MatTableDataSource<{{pascalCase singularName}}>([]);
+  selection = new SelectionModel<{{pascalCase singularName}}>(true, []);
+
+  // Selection for export feature (like authors)
+  private selectedIdsSignal = signal<Set<string>>(new Set());
+  readonly selectedItems = computed(() =>
+    this.{{camelCase moduleName}}Service
+      .{{camelCase moduleName}}List()
+      .filter((item) => this.selectedIdsSignal().has(item.id)),
+  );
+
+  // --- Signals for sort, page, search ---
+  sortState = signal<{ active: string; direction: SortDirection }>({
+    active: '',
+    direction: '',
+  });
+  pageState = signal<{ index: number; size: number }>({ index: 0, size: 25 });
+
+  // Search & Filter Signals
+  protected searchTermSignal = signal(''); // Active search term (sent to API)
+  protected searchInputSignal = signal(''); // Input field value (not auto-searched)
+
+  // Advanced filter INPUT signals (not sent to API until Apply is clicked)
+  {{#each filters.string}}
+  protected {{this.name}}InputSignal = signal('');
+  {{/each}}
+  {{#each filters.number}}
+  protected {{this.name}}InputSignal = signal('');
+  {{/each}}
+  {{#each filters.boolean}}
+  protected {{this.name}}InputSignal = signal<boolean | undefined>(undefined);
+  {{/each}}
+  {{#each filters.foreignKey}}
+  protected {{this.name}}InputSignal = signal('');
+  {{/each}}
+
+  // Advanced filter ACTIVE signals (sent to API)
+  {{#each filters.string}}
+  protected {{this.name}}FilterSignal = signal('');
+  {{/each}}
+  {{#each filters.number}}
+  protected {{this.name}}FilterSignal = signal('');
+  {{/each}}
+  {{#each filters.boolean}}
+  protected {{this.name}}FilterSignal = signal<boolean | undefined>(undefined);
+  {{/each}}
+  {{#each filters.foreignKey}}
+  protected {{this.name}}FilterSignal = signal('');
+  {{/each}}
+
+  // Date filter INPUT signals (not sent to API until Apply is clicked)
+  {{#each filters.date}}
+  protected {{this.name}}InputSignal = signal<string | null>(null);
+  protected {{this.name}}MinInputSignal = signal<string | null>(null);
+  protected {{this.name}}MaxInputSignal = signal<string | null>(null);
+  {{/each}}
+  {{#each filters.datetime}}
+  protected {{this.name}}InputSignal = signal<string | null>(null);
+  protected {{this.name}}MinInputSignal = signal<string | null>(null);
+  protected {{this.name}}MaxInputSignal = signal<string | null>(null);
+  {{/each}}
+
+  // Date filter ACTIVE signals (sent to API)
+  {{#each filters.date}}
+  protected {{this.name}}Signal = signal<string | null>(null);
+  protected {{this.name}}MinSignal = signal<string | null>(null);
+  protected {{this.name}}MaxSignal = signal<string | null>(null);
+  {{/each}}
+  {{#each filters.datetime}}
+  protected {{this.name}}Signal = signal<string | null>(null);
+  protected {{this.name}}MinSignal = signal<string | null>(null);
+  protected {{this.name}}MaxSignal = signal<string | null>(null);
+  {{/each}}
+
+  // Reload trigger - increment to force data reload even when filters unchanged
+  private reloadTrigger = signal(0);
+
+  // Holds current MatSort subscription
+  private matSortSubscription?: import('rxjs').Subscription;
+
+  /**
+   * Angular Material sort event subscription
+   * Ensures only one subscription at a time
+   */
+  @ViewChild(MatSort)
+  set matSort(sort: MatSort | undefined) {
+    this.unsubscribeMatSort();
+    if (sort) {
+      this.matSortSubscription = this.subscribeMatSort(sort);
+    }
+  }
+
+  private subscribeMatSort(sort: MatSort): import('rxjs').Subscription {
+    return fromEventPattern<Sort>((h) => sort.sortChange.subscribe(h))
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((s) => {
+        if (this.paginator) this.paginator.pageIndex = 0;
+        this.sortState.set({ active: s.active, direction: s.direction });
+      });
+  }
+
+  /**
+   * Unsubscribe previous MatSort subscription if exists
+   */
+  private unsubscribeMatSort() {
+    if (this.matSortSubscription) {
+      this.matSortSubscription.unsubscribe();
+      this.matSortSubscription = undefined;
+    }
+  }
+
+  @ViewChild(MatPaginator, { static: false }) paginator!: MatPaginator;
+  private destroyRef = inject(DestroyRef);
+
+  // Search & Filter UI State
+  quickFilter: 'all' | 'active' | 'unavailable' = 'all';
+  showAdvancedFilters = signal(false);
+
+  // Show loading indicator only if loading takes longer than 300ms
+  showLoadingIndicator = signal(false);
+  private loadingTimeout: any;
+
+  // Expandable rows state
+  protected expanded{{pascalCase singularName}} = signal<{{pascalCase singularName}} | null>(null);
+
+  // Computed signals
+  advancedFilters = computed(() => ({
+    {{#each filters.string}}
+    {{this.name}}: this.{{this.name}}InputSignal(),
+    {{/each}}
+    {{#each filters.number}}
+    {{this.name}}: this.{{this.name}}InputSignal(),
+    {{/each}}
+    {{#each filters.boolean}}
+    {{this.name}}: this.{{this.name}}InputSignal(),
+    {{/each}}
+    {{#each filters.foreignKey}}
+    {{this.name}}: this.{{this.name}}InputSignal(),
+    {{/each}}
+  }));
+
+  // Two-way binding helpers
+  get searchTerm() {
+    return this.searchInputSignal();
+  }
+  set searchTerm(value: string) {
+    this.searchInputSignal.set(value);
+  }
+
+  {{#each filters.string}}
+  get {{this.name}}Filter() {
+    return this.{{this.name}}InputSignal();
+  }
+  set {{this.name}}Filter(value: string) {
+    this.{{this.name}}InputSignal.set(value);
+  }
+  {{/each}}
+
+  {{#each filters.number}}
+  get {{this.name}}Filter() {
+    return this.{{this.name}}InputSignal();
+  }
+  set {{this.name}}Filter(value: string) {
+    this.{{this.name}}InputSignal.set(value);
+  }
+  {{/each}}
+
+  {{#each filters.boolean}}
+  get {{this.name}}Filter() {
+    return this.{{this.name}}InputSignal();
+  }
+  set {{this.name}}Filter(value: boolean | undefined) {
+    this.{{this.name}}InputSignal.set(value);
+  }
+  {{/each}}
+
+  {{#each filters.foreignKey}}
+  get {{this.name}}Filter() {
+    return this.{{this.name}}InputSignal();
+  }
+  set {{this.name}}Filter(value: string) {
+    this.{{this.name}}InputSignal.set(value);
+  }
+  {{/each}}
+
+  // Stats from API (should come from dedicated stats endpoint)
+  stats = computed(() => ({
+    total: this.{{camelCase moduleName}}Service.total{{pascalCase singularName}}(),
+    available: 0,
+    unavailable: 0,
+    recentWeek: 0,
+  }));
+
+  // Export configuration
+  exportServiceAdapter: ExportService = {
+    export: (options: ExportOptions) => this.{{camelCase moduleName}}Service.export{{pascalCase singularName}}(options),
+  };
+
+  availableExportFields = [
+    { key: 'id', label: 'ID' },
+{{#each displayColumns}}
+    { key: '{{this.name}}', label: '{{this.label}}' },
+{{/each}}
+    { key: 'created_at', label: 'Created At' },
+    { key: 'updated_at', label: 'Updated At' },
+  ];
+
+  ngAfterViewInit() {
+    this.cdr.detectChanges();
+    // Subscribe paginator changes to update pageState
+    if (this.paginator) {
+      fromEventPattern<{ pageIndex: number; pageSize: number }>((h) =>
+        this.paginator.page.subscribe(h),
+      )
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((event) => {
+          this.pageState.set({ index: event.pageIndex, size: event.pageSize });
+        });
+    }
+  }
+
+  // --- Effect: reload {{lowercase moduleName}} on sort/page/search/filter change ---
+  constructor() {
+    // Sync export selection state
+    effect(() => {
+      const ids = new Set(this.selection.selected.map((b) => b.id));
+      this.selectedIdsSignal.set(ids);
+    });
+
+    // Track loading state and delay loading indicator
+    effect(() => {
+      const loading = this.{{camelCase moduleName}}Service.loading();
+
+      // Clear any existing timeout
+      if (this.loadingTimeout) {
+        clearTimeout(this.loadingTimeout);
+        this.loadingTimeout = null;
+      }
+
+      if (loading) {
+        // Show loading indicator only after 300ms delay
+        this.loadingTimeout = setTimeout(() => {
+          this.showLoadingIndicator.set(true);
+        }, 300);
+      } else {
+        // Hide immediately when loading completes
+        this.showLoadingIndicator.set(false);
+      }
+    });
+
+    // Reload data when signals change (no auto-search on typing)
+    effect(async () => {
+      // Track reload trigger to force refresh even when filters unchanged
+      this.reloadTrigger();
+
+      const sort = this.sortState();
+      const page = this.pageState();
+      const search = this.searchTermSignal();
+
+      {{#each filters.string}}
+      const {{this.name}} = this.{{this.name}}FilterSignal();
+      {{/each}}
+      {{#each filters.number}}
+      const {{this.name}} = this.{{this.name}}FilterSignal();
+      {{/each}}
+      {{#each filters.boolean}}
+      const {{this.name}} = this.{{this.name}}FilterSignal();
+      {{/each}}
+      {{#each filters.foreignKey}}
+      const {{this.name}} = this.{{this.name}}FilterSignal();
+      {{/each}}
+      {{#each filters.date}}
+      const {{this.name}} = this.{{this.name}}Signal();
+      const {{this.name}}Min = this.{{this.name}}MinSignal();
+      const {{this.name}}Max = this.{{this.name}}MaxSignal();
+      {{/each}}
+      {{#each filters.datetime}}
+      const {{this.name}} = this.{{this.name}}Signal();
+      const {{this.name}}Min = this.{{this.name}}MinSignal();
+      const {{this.name}}Max = this.{{this.name}}MaxSignal();
+      {{/each}}
+
+      const params: Partial<List{{pascalCase singularName}}Query> = {
+        page: (page?.index ?? 0) + 1,
+        limit: page?.size ?? 25,
+        sort:
+          sort.active && sort.direction
+            ? `${sort.active}:${sort.direction}`
+            : undefined,
+        search: search?.trim() || undefined,
+        {{#each filters.string}}
+        {{this.name}}: {{this.name}}?.trim() || undefined,
+        {{/each}}
+        {{#each filters.number}}
+        {{this.name}}: {{this.name}}?.trim() || undefined,
+        {{/each}}
+        {{#each filters.boolean}}
+        {{this.name}}: {{this.name}},
+        {{/each}}
+        {{#each filters.foreignKey}}
+        {{this.name}}: {{this.name}}?.trim() || undefined,
+        {{/each}}
+        {{#each filters.date}}
+        {{this.name}}: {{this.name}} || undefined,
+        {{this.name}}_min: {{this.name}}Min || undefined,
+        {{this.name}}_max: {{this.name}}Max || undefined,
+        {{/each}}
+        {{#each filters.datetime}}
+        {{this.name}}: {{this.name}} || undefined,
+        {{this.name}}_min: {{this.name}}Min || undefined,
+        {{this.name}}_max: {{this.name}}Max || undefined,
+        {{/each}}
+      } as any;
+
+      Object.keys(params).forEach(
+        (k) =>
+          params[k as keyof typeof params] === undefined &&
+          delete params[k as keyof typeof params],
+      );
+
+      await this.{{camelCase moduleName}}Service.load{{pascalCase singularName}}List(params);
+      this.dataSource.data = this.{{camelCase moduleName}}Service.{{camelCase moduleName}}List();
+      if (this.paginator) {
+        this.paginator.length = this.{{camelCase moduleName}}Service.total{{pascalCase singularName}}();
+      }
+    });
+  }
+
+  // Search & Filter Methods
+  search() {
+    const searchValue = this.searchInputSignal().trim();
+    this.searchTermSignal.set(searchValue);
+    if (this.paginator) this.paginator.pageIndex = 0;
+  }
+
+  refresh() {
+    this.searchInputSignal.set('');
+    this.searchTermSignal.set('');
+    {{#each filters.string}}
+    this.{{this.name}}InputSignal.set('');
+    this.{{this.name}}FilterSignal.set('');
+    {{/each}}
+    {{#each filters.number}}
+    this.{{this.name}}InputSignal.set('');
+    this.{{this.name}}FilterSignal.set('');
+    {{/each}}
+    {{#each filters.boolean}}
+    this.{{this.name}}InputSignal.set(undefined);
+    this.{{this.name}}FilterSignal.set(undefined);
+    {{/each}}
+    {{#each filters.foreignKey}}
+    this.{{this.name}}InputSignal.set('');
+    this.{{this.name}}FilterSignal.set('');
+    {{/each}}
+    {{#each filters.date}}
+    // Clear {{this.label}} filter INPUT signals
+    this.{{this.name}}InputSignal.set(null);
+    this.{{this.name}}MinInputSignal.set(null);
+    this.{{this.name}}MaxInputSignal.set(null);
+    // Clear {{this.label}} filter ACTIVE signals
+    this.{{this.name}}Signal.set(null);
+    this.{{this.name}}MinSignal.set(null);
+    this.{{this.name}}MaxSignal.set(null);
+    {{/each}}
+    {{#each filters.datetime}}
+    // Clear {{this.label}} filter INPUT signals
+    this.{{this.name}}InputSignal.set(null);
+    this.{{this.name}}MinInputSignal.set(null);
+    this.{{this.name}}MaxInputSignal.set(null);
+    // Clear {{this.label}} filter ACTIVE signals
+    this.{{this.name}}Signal.set(null);
+    this.{{this.name}}MinSignal.set(null);
+    this.{{this.name}}MaxSignal.set(null);
+    {{/each}}
+    this.quickFilter = 'all';
+    if (this.paginator) this.paginator.pageIndex = 0;
+    this.reloadTrigger.update((n) => n + 1);
+  }
+
+  applyFilterImmediate() {
+    // Apply text and selection filters
+    {{#each filters.string}}
+    this.{{this.name}}FilterSignal.set(this.{{this.name}}InputSignal().trim());
+    {{/each}}
+    {{#each filters.number}}
+    this.{{this.name}}FilterSignal.set(this.{{this.name}}InputSignal().trim());
+    {{/each}}
+    {{#each filters.boolean}}
+    this.{{this.name}}FilterSignal.set(this.{{this.name}}InputSignal());
+    {{/each}}
+    {{#each filters.foreignKey}}
+    this.{{this.name}}FilterSignal.set(this.{{this.name}}InputSignal().trim());
+    {{/each}}
+
+    // Apply date/datetime filters
+    {{#each filters.date}}
+    this.{{this.name}}Signal.set(this.{{this.name}}InputSignal());
+    this.{{this.name}}MinSignal.set(this.{{this.name}}MinInputSignal());
+    this.{{this.name}}MaxSignal.set(this.{{this.name}}MaxInputSignal());
+    {{/each}}
+    {{#each filters.datetime}}
+    this.{{this.name}}Signal.set(this.{{this.name}}InputSignal());
+    this.{{this.name}}MinSignal.set(this.{{this.name}}MinInputSignal());
+    this.{{this.name}}MaxSignal.set(this.{{this.name}}MaxInputSignal());
+    {{/each}}
+
+    if (this.paginator) this.paginator.pageIndex = 0;
+  }
+
+  clearSearch() {
+    this.searchInputSignal.set('');
+    this.searchTermSignal.set('');
+    if (this.paginator) this.paginator.pageIndex = 0;
+  }
+
+  setQuickFilter(filter: 'all' | 'active' | 'unavailable') {
+    this.quickFilter = filter;
+    {{#if filters.boolean}}
+    {{#each filters.boolean}}
+    {{#if @first}}
+    // Apply quick filter to first boolean filter field
+    if (filter === 'all') {
+      this.{{this.name}}InputSignal.set(undefined);
+      this.{{this.name}}FilterSignal.set(undefined);
+    } else if (filter === 'active') {
+      this.{{this.name}}InputSignal.set(true);
+      this.{{this.name}}FilterSignal.set(true);
+    } else if (filter === 'unavailable') {
+      this.{{this.name}}InputSignal.set(false);
+      this.{{this.name}}FilterSignal.set(false);
+    }
+    {{/if}}
+    {{/each}}
+    {{/if}}
+    if (this.paginator) this.paginator.pageIndex = 0;
+  }
+
+  onDateFilterChange(dateFilter: { [key: string]: string | null | undefined }) {
+    // Update INPUT signals only (not sent to API until Apply Filters is clicked)
+    {{#each filters.date}}
+    this.{{this.name}}InputSignal.set(dateFilter['{{this.name}}'] || null);
+    this.{{this.name}}MinInputSignal.set(dateFilter['{{this.name}}_min'] || null);
+    this.{{this.name}}MaxInputSignal.set(dateFilter['{{this.name}}_max'] || null);
+    {{/each}}
+    {{#each filters.datetime}}
+    this.{{this.name}}InputSignal.set(dateFilter['{{this.name}}'] || null);
+    this.{{this.name}}MinInputSignal.set(dateFilter['{{this.name}}_min'] || null);
+    this.{{this.name}}MaxInputSignal.set(dateFilter['{{this.name}}_max'] || null);
+    {{/each}}
+  }
+
+  clearAllFilters() {
+    this.searchInputSignal.set('');
+    this.searchTermSignal.set('');
+    {{#each filters.string}}
+    this.{{this.name}}InputSignal.set('');
+    this.{{this.name}}FilterSignal.set('');
+    {{/each}}
+    {{#each filters.number}}
+    this.{{this.name}}InputSignal.set('');
+    this.{{this.name}}FilterSignal.set('');
+    {{/each}}
+    {{#each filters.boolean}}
+    this.{{this.name}}InputSignal.set(undefined);
+    this.{{this.name}}FilterSignal.set(undefined);
+    {{/each}}
+    {{#each filters.foreignKey}}
+    this.{{this.name}}InputSignal.set('');
+    this.{{this.name}}FilterSignal.set('');
+    {{/each}}
+    {{#each filters.date}}
+    // Clear {{this.label}} filter INPUT signals
+    this.{{this.name}}InputSignal.set(null);
+    this.{{this.name}}MinInputSignal.set(null);
+    this.{{this.name}}MaxInputSignal.set(null);
+    // Clear {{this.label}} filter ACTIVE signals
+    this.{{this.name}}Signal.set(null);
+    this.{{this.name}}MinSignal.set(null);
+    this.{{this.name}}MaxSignal.set(null);
+    {{/each}}
+    {{#each filters.datetime}}
+    // Clear {{this.label}} filter INPUT signals
+    this.{{this.name}}InputSignal.set(null);
+    this.{{this.name}}MinInputSignal.set(null);
+    this.{{this.name}}MaxInputSignal.set(null);
+    // Clear {{this.label}} filter ACTIVE signals
+    this.{{this.name}}Signal.set(null);
+    this.{{this.name}}MinSignal.set(null);
+    this.{{this.name}}MaxSignal.set(null);
+    {{/each}}
+    this.quickFilter = 'all';
+    this.showAdvancedFilters.set(false);
+    if (this.paginator) this.paginator.pageIndex = 0;
+  }
+
+  // Helper methods
+  hasActiveFilters(): boolean {
+    return (
+      this.searchTermSignal().trim() !== ''{{#if filters.string.length}} ||{{/if}}{{#if filters.number.length}}{{#unless filters.string.length}} ||{{/unless}}{{/if}}{{#if filters.boolean.length}}{{#unless filters.string.length}}{{#unless filters.number.length}} ||{{/unless}}{{/unless}}{{/if}}{{#if filters.foreignKey.length}}{{#unless filters.string.length}}{{#unless filters.number.length}}{{#unless filters.boolean.length}} ||{{/unless}}{{/unless}}{{/unless}}{{/if}}{{#if filters.date.length}}{{#unless filters.string.length}}{{#unless filters.number.length}}{{#unless filters.boolean.length}}{{#unless filters.foreignKey.length}} ||{{/unless}}{{/unless}}{{/unless}}{{/unless}}{{/if}}{{#if filters.datetime.length}}{{#unless filters.string.length}}{{#unless filters.number.length}}{{#unless filters.boolean.length}}{{#unless filters.foreignKey.length}}{{#unless filters.date.length}} ||{{/unless}}{{/unless}}{{/unless}}{{/unless}}{{/unless}}{{/if}}
+      {{#each filters.string}}
+      this.{{this.name}}FilterSignal().trim() !== ''{{#unless @last}} ||{{/unless}}{{#if @last}}{{#if ../filters.number.length}} ||{{/if}}{{#if ../filters.boolean.length}}{{#unless ../filters.number.length}} ||{{/unless}}{{/if}}{{#if ../filters.foreignKey.length}}{{#unless ../filters.number.length}}{{#unless ../filters.boolean.length}} ||{{/unless}}{{/unless}}{{/if}}{{#if ../filters.date.length}}{{#unless ../filters.number.length}}{{#unless ../filters.boolean.length}}{{#unless ../filters.foreignKey.length}} ||{{/unless}}{{/unless}}{{/unless}}{{/if}}{{#if ../filters.datetime.length}}{{#unless ../filters.number.length}}{{#unless ../filters.boolean.length}}{{#unless ../filters.foreignKey.length}}{{#unless ../filters.date.length}} ||{{/unless}}{{/unless}}{{/unless}}{{/unless}}{{/if}}{{/if}}
+      {{/each}}
+      {{#each filters.number}}
+      this.{{this.name}}FilterSignal().trim() !== ''{{#unless @last}} ||{{/unless}}{{#if @last}}{{#if ../filters.boolean.length}} ||{{/if}}{{#if ../filters.foreignKey.length}}{{#unless ../filters.boolean.length}} ||{{/unless}}{{/if}}{{#if ../filters.date.length}}{{#unless ../filters.boolean.length}}{{#unless ../filters.foreignKey.length}} ||{{/unless}}{{/unless}}{{/if}}{{#if ../filters.datetime.length}}{{#unless ../filters.boolean.length}}{{#unless ../filters.foreignKey.length}}{{#unless ../filters.date.length}} ||{{/unless}}{{/unless}}{{/unless}}{{/if}}{{/if}}
+      {{/each}}
+      {{#each filters.boolean}}
+      this.{{this.name}}FilterSignal() !== undefined{{#unless @last}} ||{{/unless}}{{#if @last}}{{#if ../filters.foreignKey.length}} ||{{/if}}{{#if ../filters.date.length}}{{#unless ../filters.foreignKey.length}} ||{{/unless}}{{/if}}{{#if ../filters.datetime.length}}{{#unless ../filters.foreignKey.length}}{{#unless ../filters.date.length}} ||{{/unless}}{{/unless}}{{/if}}{{/if}}
+      {{/each}}
+      {{#each filters.foreignKey}}
+      (this.{{this.name}}FilterSignal()?.trim() || '') !== ''{{#unless @last}} ||{{/unless}}{{#if @last}}{{#if ../filters.date.length}} ||{{/if}}{{#if ../filters.datetime.length}}{{#unless ../filters.date.length}} ||{{/unless}}{{/if}}{{/if}}
+      {{/each}}
+      {{#each filters.date}}
+      (this.{{this.name}}Signal() !== null || this.{{this.name}}MinSignal() !== null || this.{{this.name}}MaxSignal() !== null){{#unless @last}} ||{{/unless}}{{#if @last}}{{#if ../filters.datetime.length}} ||{{/if}}{{/if}}
+      {{/each}}
+      {{#each filters.datetime}}
+      (this.{{this.name}}Signal() !== null || this.{{this.name}}MinSignal() !== null || this.{{this.name}}MaxSignal() !== null){{#unless @last}} ||{{/unless}}
+      {{/each}}
+    );
+  }
+
+  getActiveFilterCount(): number {
+    let count = 0;
+    if (this.searchTermSignal().trim()) count++;
+    {{#each filters.string}}
+    if (this.{{this.name}}FilterSignal().trim()) count++;
+    {{/each}}
+    {{#each filters.number}}
+    if (this.{{this.name}}FilterSignal().trim()) count++;
+    {{/each}}
+    {{#each filters.boolean}}
+    if (this.{{this.name}}FilterSignal() !== undefined) count++;
+    {{/each}}
+    {{#each filters.foreignKey}}
+    if (this.{{this.name}}FilterSignal()?.trim()) count++;
+    {{/each}}
+    {{#each filters.date}}
+    // Count {{this.label}} filter as one if any date field is set
+    if (
+      this.{{this.name}}Signal() ||
+      this.{{this.name}}MinSignal() ||
+      this.{{this.name}}MaxSignal()
+    )
+      count++;
+    {{/each}}
+    {{#each filters.datetime}}
+    // Count {{this.label}} filter as one if any datetime field is set
+    if (
+      this.{{this.name}}Signal() ||
+      this.{{this.name}}MinSignal() ||
+      this.{{this.name}}MaxSignal()
+    )
+      count++;
+    {{/each}}
+    return count;
+  }
+
+  // Selection Methods
+  isAllSelected() {
+    const numSelected = this.selection.selected.length;
+    const numRows = this.dataSource.data.length;
+    return numSelected === numRows;
+  }
+
+  toggleAllRows() {
+    if (this.isAllSelected()) {
+      this.selection.clear();
+      return;
+    }
+    this.selection.select(...this.dataSource.data);
+  }
+
+  // CRUD Operations
+  openCreateDialog() {
+    const dialogRef = this.dialog.open({{pascalCase singularName}}CreateDialogComponent, {
+      width: '600px',
+    });
+
+    dialogRef.afterClosed().subscribe((result: boolean) => {
+      if (result) {
+        this.reloadTrigger.update((n) => n + 1);
+      }
+    });
+  }
+
+  onView{{pascalCase singularName}}({{camelCase singularName}}: {{pascalCase singularName}}) {
+    const dialogRef = this.dialog.open({{pascalCase singularName}}ViewDialogComponent, {
+      width: '600px',
+      data: { {{lowercase moduleName}}: {{camelCase singularName}} } as {{pascalCase singularName}}ViewDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result?.action === 'edit') {
+        this.onEdit{{pascalCase singularName}}(result.data);
+      }
+    });
+  }
+
+  onEdit{{pascalCase singularName}}({{camelCase singularName}}: {{pascalCase singularName}}) {
+    const dialogRef = this.dialog.open({{pascalCase singularName}}EditDialogComponent, {
+      width: '600px',
+      data: { {{lowercase moduleName}}: {{camelCase singularName}} } as {{pascalCase singularName}}EditDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((result: boolean) => {
+      if (result) {
+        this.reloadTrigger.update((n) => n + 1);
+      }
+    });
+  }
+
+  onDelete{{pascalCase singularName}}({{camelCase singularName}}: {{pascalCase singularName}}) {
+    const itemName = ({{camelCase singularName}} as any).name || ({{camelCase singularName}} as any).title || '{{lowercase singularName}}';
+    this.axDialog.confirmDelete(itemName).subscribe(async (confirmed) => {
+      if (confirmed) {
+        try {
+          await this.{{camelCase moduleName}}Service.delete{{pascalCase singularName}}({{camelCase singularName}}.id);
+          this.snackBar.open('{{pascalCase singularName}} deleted successfully', 'Close', {
+            duration: 3000,
+          });
+          this.reloadTrigger.update((n) => n + 1);
+        } catch {
+          this.snackBar.open('Failed to delete {{lowercase singularName}}', 'Close', {
+            duration: 3000,
+          });
+        }
+      }
+    });
+  }
+
+  bulkDelete() {
+    const count = this.selection.selected.length;
+    this.axDialog
+      .confirmBulkDelete(count, '{{lowercase moduleName}}')
+      .subscribe(async (confirmed) => {
+        if (confirmed) {
+          try {
+            const deletePromises = this.selection.selected.map(({{camelCase singularName}}) =>
+              this.{{camelCase moduleName}}Service.delete{{pascalCase singularName}}({{camelCase singularName}}.id),
+            );
+
+            await Promise.all(deletePromises);
+            this.snackBar.open(
+              `${count} {{lowercase singularName}}(s) deleted successfully`,
+              'Close',
+              { duration: 3000 },
+            );
+            this.selection.clear();
+            this.reloadTrigger.update((n) => n + 1);
+          } catch {
+            this.snackBar.open('Failed to delete some {{lowercase moduleName}}', 'Close', {
+              duration: 3000,
+            });
+          }
+        }
+      });
+  }
+
+  // Export Event Handlers
+  onExportStarted(options: ExportOptions) {
+    this.snackBar.open(
+      `Preparing ${options.format.toUpperCase()} export...`,
+      '',
+      { duration: 2000 },
+    );
+  }
+
+  onExportCompleted(result: { success: boolean; format: string }) {
+    if (result.success) {
+      this.snackBar.open(
+        `${result.format.toUpperCase()} export completed successfully!`,
+        'Close',
+        {
+          duration: 3000,
+          panelClass: ['success-snackbar'],
+        },
+      );
+    } else {
+      this.snackBar.open(
+        `${result.format.toUpperCase()} export failed`,
+        'Close',
+        {
+          duration: 5000,
+          panelClass: ['error-snackbar'],
+        },
+      );
+    }
+  }
+
+  // Filter Helpers
+  getExportFilters(): Record<string, unknown> {
+    return {
+      searchTerm: this.searchTermSignal(),
+      {{#each filters.string}}
+      {{this.name}}: this.{{this.name}}FilterSignal(),
+      {{/each}}
+      {{#each filters.number}}
+      {{this.name}}: this.{{this.name}}FilterSignal(),
+      {{/each}}
+      {{#each filters.boolean}}
+      {{this.name}}: this.{{this.name}}FilterSignal(),
+      {{/each}}
+      {{#each filters.foreignKey}}
+      {{this.name}}: this.{{this.name}}FilterSignal(),
+      {{/each}}
+    };
+  }
+
+  // Stats Methods
+  getPercentage(count: number): number {
+    const total = this.stats().total;
+    return total > 0 ? Math.round((count / total) * 100) : 0;
+  }
+
+  // Expandable Row Methods
+  toggleExpandRow({{camelCase singularName}}: {{pascalCase singularName}}): void {
+    const currentExpanded = this.expanded{{pascalCase singularName}}();
+    if (currentExpanded?.id === {{camelCase singularName}}.id) {
+      // Collapse currently expanded row
+      this.expanded{{pascalCase singularName}}.set(null);
+    } else {
+      // Expand new row (and collapse previous if any)
+      this.expanded{{pascalCase singularName}}.set({{camelCase singularName}});
+    }
+  }
+
+  isRowExpanded({{camelCase singularName}}: {{pascalCase singularName}}): boolean {
+    return this.expanded{{pascalCase singularName}}()?.id === {{camelCase singularName}}.id;
+  }
+}

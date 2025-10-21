@@ -1,0 +1,27 @@
+{
+  "defaultTemplates": {
+    "backend": "domain",
+    "frontend": "v2"
+  },
+  "customTemplates": {
+    "backend": {},
+    "frontend": {}
+  },
+  "defaultFeatures": {
+    "events": true,
+    "bulkOperations": true,
+    "export": false,
+    "import": false
+  },
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "aegisx_dev",
+    "user": "aegisx",
+    "password": "aegisx123"
+  },
+  "paths": {
+    "api": "../../apps/api/src",
+    "web": "../../apps/web/src/app"
+  }
+}

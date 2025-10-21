@@ -1,0 +1,12 @@
+import { Routes } from '@angular/router';
+
+export const {{moduleName}}Routes: Routes = [
+  {
+    path: '',
+    loadComponent: () =>
+      import('./components/{{kebabCase moduleName}}-list.component').then(
+        (m) => m.{{PascalCase}}ListComponent
+      ),
+    title: '{{title}}'
+  }
+];

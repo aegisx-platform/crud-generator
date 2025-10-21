@@ -1,0 +1,55 @@
+{
+  "name": "standard",
+  "version": "1.0.0",
+  "description": "Standard flat structure - All files in single directory",
+  "author": "AegisX Team",
+  "type": "backend",
+  "framework": "fastify",
+  "default": false,
+  "files": [
+    {
+      "template": "controller.hbs",
+      "output": "{{tableName}}.controller.ts",
+      "description": "Controller with route handlers"
+    },
+    {
+      "template": "service.hbs",
+      "output": "{{tableName}}.service.ts",
+      "description": "Business logic service"
+    },
+    {
+      "template": "repository.hbs",
+      "output": "{{tableName}}.repository.ts",
+      "description": "Data access layer"
+    },
+    {
+      "template": "routes.hbs",
+      "output": "{{tableName}}.routes.ts",
+      "description": "Fastify route definitions"
+    },
+    {
+      "template": "schemas.hbs",
+      "output": "{{tableName}}.schemas.ts",
+      "description": "TypeBox validation schemas"
+    },
+    {
+      "template": "types.hbs",
+      "output": "{{tableName}}.types.ts",
+      "description": "TypeScript type definitions"
+    },
+    {
+      "template": "plugin.hbs",
+      "output": "{{tableName}}.plugin.ts",
+      "description": "Fastify plugin"
+    },
+    {
+      "template": "test.hbs",
+      "output": "{{tableName}}.test.ts",
+      "description": "Unit tests"
+    }
+  ],
+  "dependencies": {
+    "fastify": "^4.0.0",
+    "@sinclair/typebox": "^0.32.0"
+  }
+}

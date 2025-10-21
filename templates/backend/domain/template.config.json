@@ -1,0 +1,55 @@
+{
+  "name": "domain",
+  "version": "2.0.0",
+  "description": "Domain-based structure (Recommended) - Organized by feature domains",
+  "author": "AegisX Team",
+  "type": "backend",
+  "framework": "fastify",
+  "default": true,
+  "files": [
+    {
+      "template": "controller.hbs",
+      "output": "{{tableName}}.controller.ts",
+      "description": "Domain controller with route handlers"
+    },
+    {
+      "template": "service.hbs",
+      "output": "{{tableName}}.service.ts",
+      "description": "Business logic service"
+    },
+    {
+      "template": "repository.hbs",
+      "output": "{{tableName}}.repository.ts",
+      "description": "Data access layer"
+    },
+    {
+      "template": "route.hbs",
+      "output": "{{tableName}}.route.ts",
+      "description": "Fastify route definitions"
+    },
+    {
+      "template": "schemas.hbs",
+      "output": "{{tableName}}.schemas.ts",
+      "description": "TypeBox validation schemas"
+    },
+    {
+      "template": "types.hbs",
+      "output": "{{tableName}}.types.ts",
+      "description": "TypeScript type definitions"
+    },
+    {
+      "template": "index.hbs",
+      "output": "index.ts",
+      "description": "Module exports"
+    },
+    {
+      "template": "test.hbs",
+      "output": "{{tableName}}.test.ts",
+      "description": "Unit tests"
+    }
+  ],
+  "dependencies": {
+    "fastify": "^4.0.0",
+    "@sinclair/typebox": "^0.32.0"
+  }
+}

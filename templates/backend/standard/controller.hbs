@@ -1,0 +1,716 @@
+import { FastifyRequest, FastifyReply } from 'fastify';
+import { Static } from '@sinclair/typebox';
+import { {{ModuleName}}Service } from '../services/{{moduleName}}.service';
+import {
+  Create{{ModuleName}},
+  Update{{ModuleName}},
+} from '../types/{{moduleName}}.types';
+import {
+  Create{{ModuleName}}Schema,
+  Update{{ModuleName}}Schema,
+  {{ModuleName}}IdParamSchema,
+  Get{{ModuleName}}QuerySchema,
+  List{{ModuleName}}QuerySchema,
+} from '../schemas/{{moduleName}}.schemas';
+import {
+  DropdownQuerySchema,
+  BulkCreateSchema,
+  BulkUpdateSchema,
+  BulkDeleteSchema,
+  /* DEBUG: hasStatusField={{hasStatusField}} */{{#if hasStatusField}}
+  BulkStatusSchema,
+  StatusToggleSchema,{{/if}}{{#if (eq package 'full')}}
+  ValidationRequestSchema,
+  UniquenessCheckSchema,{{/if}}
+} from '../../../schemas/base.schemas';
+
+/**
+ * {{ModuleName}} Controller
+ * Package: {{package}}
+ * Has Status Field: {{hasStatusField}}
+ * DEBUG hasStatusField={{hasStatusField}}
+ * 
+ * Following Fastify controller patterns:
+ * - Proper request/reply typing with Static<typeof Schema>
+ * - Schema-based validation integration
+ * - Structured error handling
+ * - Logging integration with Fastify's logger
+ */
+export class {{ModuleName}}Controller {
+  constructor(private {{moduleName}}Service: {{ModuleName}}Service) {}
+
+  /**
+   * Create new {{moduleName}}
+   * POST /{{moduleName}}
+   */
+  async create(
+    request: FastifyRequest<{ Body: Static<typeof Create{{ModuleName}}Schema> }>,
+    reply: FastifyReply
+  ) {
+    try {
+      request.log.info({ body: request.body }, 'Creating {{moduleName}}');
+
+      // Transform API schema to domain model
+      const createData = this.transformCreateSchema(request.body, request);
+      
+      const {{moduleName}} = await this.{{moduleName}}Service.create(createData);
+      
+      request.log.info({ {{moduleName}}Id: {{moduleName}}.id }, '{{ModuleName}} created successfully');
+
+      return reply
+        .code(201)
+        .success({{moduleName}}, '{{ModuleName}} created successfully');
+    } catch (error) {
+      request.log.error(error, 'Error creating {{moduleName}}');
+      
+      return reply
+        .code(500)
+        .error(
+          'INTERNAL_SERVER_ERROR',
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred',
+        );
+    }
+  }
+
+  /**
+   * Get {{moduleName}} by ID
+   * GET /{{moduleName}}/:id
+   */
+  async findOne(
+    request: FastifyRequest<{
+      Params: Static<typeof {{ModuleName}}IdParamSchema>;
+      Querystring: Static<typeof Get{{ModuleName}}QuerySchema>;
+    }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const { id } = request.params;
+      request.log.info({ {{moduleName}}Id: id }, 'Fetching {{moduleName}}');
+
+      const {{moduleName}} = await this.{{moduleName}}Service.findById(id, request.query);
+
+      return reply.success({{moduleName}});
+    } catch (error) {
+      request.log.error({ error, {{moduleName}}Id: request.params.id }, 'Error fetching {{moduleName}}');
+      
+      return reply
+        .code(500)
+        .error(
+          'INTERNAL_SERVER_ERROR',
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred',
+        );
+    }
+  }
+
+  /**
+   * Get paginated list of {{moduleName}}s
+   * GET /{{moduleName}}
+   * Supports: ?fields=id,name&limit=100 (Security hardened)
+   */
+  async findMany(
+    request: FastifyRequest<{ Querystring: Static<typeof List{{ModuleName}}QuerySchema> }>,
+    reply: FastifyReply
+  ) {
+    try {
+      request.log.info({ query: request.query }, 'Fetching {{moduleName}} list');
+
+      // 🛡️ Security: Extract and validate parameters
+      const { fields, ...queryParams } = request.query;
+      
+      // 🛡️ Security: Define allowed fields by role
+      const SAFE_FIELDS = {
+        public: ['id', '{{defaultLabelField}}', 'created_at'],
+        user: ['id', '{{defaultLabelField}}', {{#each columns}}{{#unless (isSensitiveField this)}}'{{name}}', {{/unless}}{{/each}}'created_at'],
+        admin: [{{#each columns}}'{{name}}', {{/each}}]
+      };
+      
+      // 🛡️ Security: Get user role (default to public for safety)
+      const userRole = request.user?.role || 'public';
+      const allowedFields = SAFE_FIELDS[userRole] || SAFE_FIELDS.public;
+      
+      // 🛡️ Security: Filter requested fields against whitelist
+      const safeFields = fields ? fields.filter(field => allowedFields.includes(field)) : undefined;
+      
+      // 🛡️ Security: Log suspicious requests
+      if (fields && fields.some(field => !allowedFields.includes(field))) {
+        request.log.warn({
+          user: request.user?.id,
+          requestedFields: fields,
+          allowedFields,
+          ip: request.ip
+        }, 'Suspicious field access attempt detected');
+      }
+
+      // Get {{moduleName}} list with field filtering
+      const result = await this.{{moduleName}}Service.findMany({
+        ...queryParams,
+        fields: safeFields
+      });
+
+      request.log.info({ 
+        count: result.data.length, 
+        total: result.pagination.total,
+        fieldsRequested: fields?.length || 0,
+        fieldsAllowed: safeFields?.length || 'all'
+      }, '{{ModuleName}} list fetched');
+
+      // Use raw send to match FlexibleSchema 
+      return reply.send({
+        success: true,
+        data: result.data,
+        pagination: result.pagination,
+        meta: {
+          timestamp: new Date().toISOString(),
+          version: 'v1',
+          requestId: request.id,
+          environment: process.env.NODE_ENV || 'development',
+        },
+      });
+    } catch (error) {
+      request.log.error({ error, query: request.query }, 'Error fetching {{moduleName}} list');
+      
+      return reply.status(500).send({
+        success: false,
+        error: {
+          code: 'LIST_FETCH_FAILED',
+          message: 'Failed to fetch {{moduleName}} list'
+        }
+      });
+    }
+  }
+
+  /**
+   * Update {{moduleName}}
+   * PUT /{{moduleName}}/:id
+   */
+  async update(
+    request: FastifyRequest<{
+      Params: Static<typeof {{ModuleName}}IdParamSchema>;
+      Body: Static<typeof Update{{ModuleName}}Schema>;
+    }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const { id } = request.params;
+      request.log.info({ {{moduleName}}Id: id, body: request.body }, 'Updating {{moduleName}}');
+
+      // Transform API schema to domain model
+      const updateData = this.transformUpdateSchema(request.body, request);
+      
+      const {{moduleName}} = await this.{{moduleName}}Service.update(id, updateData);
+
+      if (!{{moduleName}}) {
+        return reply.status(404).send({
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: '{{ModuleName}} not found'
+          }
+        });
+      }
+
+      request.log.info({ {{moduleName}}Id: id }, '{{ModuleName}} updated successfully');
+
+      return reply.send({
+        success: true,
+        data: {{moduleName}},
+        message: '{{ModuleName}} updated successfully'
+      });
+    } catch (error) {
+      request.log.error({ error, {{moduleName}}Id: request.params.id }, 'Error updating {{moduleName}}');
+      
+      return reply.status(500).send({
+        success: false,
+        error: {
+          code: 'UPDATE_FAILED',
+          message: error instanceof Error ? error.message : 'Failed to update {{moduleName}}'
+        }
+      });
+    }
+  }
+
+  /**
+   * Delete {{moduleName}}
+   * DELETE /{{moduleName}}/:id
+   */
+  async delete(
+    request: FastifyRequest<{ Params: Static<typeof {{ModuleName}}IdParamSchema> }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const { id } = request.params;
+      request.log.info({ {{moduleName}}Id: id }, 'Deleting {{moduleName}}');
+
+      const deleted = await this.{{moduleName}}Service.delete(id);
+
+      if (!deleted) {
+        return reply.code(404).error('NOT_FOUND', '{{ModuleName}} not found');
+      }
+
+      request.log.info({ {{moduleName}}Id: id }, '{{ModuleName}} deleted successfully');
+
+      // Return operation result using standard success response
+      return reply.success({
+        id,
+        deleted: true
+      }, '{{ModuleName}} deleted successfully');
+    } catch (error) {
+      request.log.error({ error, {{moduleName}}Id: request.params.id }, 'Error deleting {{moduleName}}');
+      return reply.code(500).error('INTERNAL_SERVER_ERROR', error instanceof Error ? error.message : 'An unexpected error occurred');
+    }
+  }
+
+{{#if (or (eq package 'enterprise') (eq package 'full'))}}
+  
+  // ===== ENHANCED CRUD METHODS =====
+  
+  /**
+   * Get dropdown options
+   * GET /{{moduleName}}/dropdown
+   */
+  async getDropdownOptions(
+    request: FastifyRequest<{ Querystring: Static<typeof DropdownQuerySchema> }>,
+    reply: FastifyReply
+  ) {
+    try {
+      request.log.info({ query: request.query }, 'Fetching {{moduleName}} dropdown options');
+
+      const result = await this.{{moduleName}}Service.getDropdownOptions(request.query);
+
+      return reply.send({
+        success: true,
+        data: {
+          options: result.options,
+          total: result.total
+        }
+      });
+    } catch (error) {
+      request.log.error(error, 'Error fetching {{moduleName}} dropdown options');
+      
+      return reply.status(500).send({
+        success: false,
+        error: {
+          code: 'DROPDOWN_FETCH_FAILED',
+          message: 'Failed to fetch {{moduleName}} dropdown options'
+        }
+      });
+    }
+  }
+
+  /**
+   * Bulk create {{moduleName}}s
+   * POST /{{moduleName}}/bulk
+   */
+  async bulkCreate(
+    request: FastifyRequest<{
+      Body: {
+        items: Create{{ModuleName}}[];
+        options?: { skipDuplicates?: boolean; continueOnError?: boolean };
+      };
+    }>,
+    reply: FastifyReply,
+  ) {
+    request.log.info(
+      { count: request.body.items.length },
+      'Bulk creating {{moduleName}}s',
+    );
+
+    // Transform API schema to domain model for each item
+    const transformedData = {
+      items: request.body.items.map((item) => this.transformCreateSchema(item, request)),
+    };
+
+    const result = await this.{{moduleName}}Service.bulkCreate(transformedData);
+
+    return reply
+      .code(201)
+      .success(
+        result,
+        `Bulk create completed: ${result.summary.successful} successful, ${result.summary.failed} failed`,
+      );
+  }
+
+  /**
+   * Bulk update {{moduleName}}s
+   * PUT /{{moduleName}}/bulk
+   */
+  async bulkUpdate(
+    request: FastifyRequest<{
+      Body: { items: Array<{ id: string | number; data: Update{{ModuleName}} }> };
+    }>,
+    reply: FastifyReply,
+  ) {
+    request.log.info(
+      { count: request.body.items.length },
+      'Bulk updating {{moduleName}}s',
+    );
+
+    // Transform API schema to domain model for each item
+    const transformedData = {
+      items: request.body.items.map((item) => ({
+        id: item.id,
+        data: this.transformUpdateSchema(item.data, request),
+      })),
+    };
+
+    const result = await this.{{moduleName}}Service.bulkUpdate(transformedData);
+
+    return reply.success(
+      result,
+      `Bulk update completed: ${result.summary.successful} successful, ${result.summary.failed} failed`,
+    );
+  }
+
+  /**
+   * Bulk delete {{moduleName}}s
+   * DELETE /{{moduleName}}/bulk
+   */
+  async bulkDelete(
+    request: FastifyRequest<{ Body: Static<typeof BulkDeleteSchema> }>,
+    reply: FastifyReply,
+  ) {
+    request.log.info(
+      { count: request.body.ids.length },
+      'Bulk deleting {{moduleName}}s',
+    );
+
+    const result = await this.{{moduleName}}Service.bulkDelete(request.body);
+
+    return reply.success(
+      result,
+      `Bulk delete completed: ${result.summary.successful} successful, ${result.summary.failed} failed`,
+    );
+  }
+
+  {{#if hasStatusField}}
+  /**
+   * Bulk status update
+   * PATCH /{{moduleName}}/bulk/status
+   */
+  async bulkUpdateStatus(
+    request: FastifyRequest<{ Body: Static<typeof BulkStatusSchema> }>,
+    reply: FastifyReply
+  ) {
+    try {
+      request.log.info({ 
+        count: request.body.ids.length, 
+        status: request.body.status 
+      }, 'Bulk updating {{moduleName}} status');
+
+      const result = await this.{{moduleName}}Service.bulkUpdateStatus(request.body);
+
+      return reply.send({
+        success: true,
+        data: result,
+        message: `Bulk status update completed: ${result.summary.successful} successful, ${result.summary.failed} failed`
+      });
+    } catch (error) {
+      request.log.error(error, 'Error bulk updating {{moduleName}} status');
+      
+      return reply.status(500).send({
+        success: false,
+        error: {
+          code: 'BULK_STATUS_UPDATE_FAILED',
+          message: 'Failed to bulk update {{moduleName}} status'
+        }
+      });
+    }
+  }
+
+  /**
+   * Activate {{moduleName}}
+   * PATCH /{{moduleName}}/:id/activate
+   */
+  async activate(
+    request: FastifyRequest<{
+      Params: Static<typeof {{ModuleName}}IdParamSchema>;
+      Body: Static<typeof StatusToggleSchema>;
+    }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const { id } = request.params;
+      request.log.info({ {{moduleName}}Id: id }, 'Activating {{moduleName}}');
+
+      const result = await this.{{moduleName}}Service.activate(id, request.body);
+
+      if (!result) {
+        return reply.status(404).send({
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: '{{ModuleName}} not found'
+          }
+        });
+      }
+
+      return reply.send({
+        success: true,
+        data: result,
+        message: '{{ModuleName}} activated successfully'
+      });
+    } catch (error) {
+      request.log.error(error, 'Error activating {{moduleName}}');
+      
+      return reply.status(500).send({
+        success: false,
+        error: {
+          code: 'ACTIVATION_FAILED',
+          message: 'Failed to activate {{moduleName}}'
+        }
+      });
+    }
+  }
+
+  /**
+   * Deactivate {{moduleName}}
+   * PATCH /{{moduleName}}/:id/deactivate
+   */
+  async deactivate(
+    request: FastifyRequest<{
+      Params: Static<typeof {{ModuleName}}IdParamSchema>;
+      Body: Static<typeof StatusToggleSchema>;
+    }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const { id } = request.params;
+      request.log.info({ {{moduleName}}Id: id }, 'Deactivating {{moduleName}}');
+
+      const result = await this.{{moduleName}}Service.deactivate(id, request.body);
+
+      if (!result) {
+        return reply.status(404).send({
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: '{{ModuleName}} not found'
+          }
+        });
+      }
+
+      return reply.send({
+        success: true,
+        data: result,
+        message: '{{ModuleName}} deactivated successfully'
+      });
+    } catch (error) {
+      request.log.error(error, 'Error deactivating {{moduleName}}');
+      
+      return reply.status(500).send({
+        success: false,
+        error: {
+          code: 'DEACTIVATION_FAILED',
+          message: 'Failed to deactivate {{moduleName}}'
+        }
+      });
+    }
+  }
+
+  /**
+   * Toggle {{moduleName}} status
+   * PATCH /{{moduleName}}/:id/toggle
+   */
+  async toggle(
+    request: FastifyRequest<{
+      Params: Static<typeof {{ModuleName}}IdParamSchema>;
+      Body: Static<typeof StatusToggleSchema>;
+    }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const { id } = request.params;
+      request.log.info({ {{moduleName}}Id: id }, 'Toggling {{moduleName}} status');
+
+      const result = await this.{{moduleName}}Service.toggle(id, request.body);
+
+      if (!result) {
+        return reply.status(404).send({
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: '{{ModuleName}} not found'
+          }
+        });
+      }
+
+      return reply.send({
+        success: true,
+        data: result,
+        message: '{{ModuleName}} status toggled successfully'
+      });
+    } catch (error) {
+      request.log.error(error, 'Error toggling {{moduleName}} status');
+      
+      return reply.status(500).send({
+        success: false,
+        error: {
+          code: 'TOGGLE_FAILED',
+          message: 'Failed to toggle {{moduleName}} status'
+        }
+      });
+    }
+  }
+  {{/if}}
+
+  /**
+   * Get statistics
+   * GET /{{moduleName}}/stats
+   */
+  async getStats(
+    request: FastifyRequest,
+    reply: FastifyReply
+  ) {
+    try {
+      request.log.info('Fetching {{moduleName}} statistics');
+
+      const stats = await this.{{moduleName}}Service.getStats();
+
+      return reply.send({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      request.log.error(error, 'Error fetching {{moduleName}} statistics');
+      
+      return reply.status(500).send({
+        success: false,
+        error: {
+          code: 'STATS_FETCH_FAILED',
+          message: 'Failed to fetch {{moduleName}} statistics'
+        }
+      });
+    }
+  }
+{{/if}}
+
+{{#if (eq package 'full')}}
+  
+  // ===== FULL PACKAGE METHODS =====
+  
+  /**
+   * Validate data before save
+   * POST /{{moduleName}}/validate
+   */
+  async validate(
+    request: FastifyRequest<{ Body: Static<typeof ValidationRequestSchema<typeof Create{{ModuleName}}Schema>> }>,
+    reply: FastifyReply
+  ) {
+    try {
+      request.log.info('Validating {{moduleName}} data');
+
+      const result = await this.{{moduleName}}Service.validate(request.body);
+
+      return reply.send({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      request.log.error(error, 'Error validating {{moduleName}} data');
+      
+      return reply.status(500).send({
+        success: false,
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'Failed to validate {{moduleName}} data'
+        }
+      });
+    }
+  }
+
+  /**
+   * Check field uniqueness
+   * GET /{{moduleName}}/check/:field
+   */
+  async checkUniqueness(
+    request: FastifyRequest<{ 
+      Params: { field: string };
+      Querystring: Static<typeof UniquenessCheckSchema>; 
+    }>,
+    reply: FastifyReply
+  ) {
+    try {
+      const { field } = request.params;
+      request.log.info({ field, value: request.query.value }, 'Checking {{moduleName}} field uniqueness');
+
+      const result = await this.{{moduleName}}Service.checkUniqueness(field, request.query);
+
+      return reply.send({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      request.log.error(error, 'Error checking {{moduleName}} field uniqueness');
+      
+      return reply.status(500).send({
+        success: false,
+        error: {
+          code: 'UNIQUENESS_CHECK_FAILED',
+          message: 'Failed to check {{moduleName}} field uniqueness'
+        }
+      });
+    }
+  }
+{{/if}}
+
+  // ===== PRIVATE TRANSFORMATION METHODS =====
+
+  /**
+   * Transform API create schema to domain model
+   */
+  private transformCreateSchema(schema: Static<typeof Create{{ModuleName}}Schema>, request: FastifyRequest) {
+    const result: any = {
+      // Transform snake_case API fields to camelCase domain fields
+      {{#each columns}}
+      {{#unless isPrimaryKey}}
+      {{#unless (or (eq name 'created_at') (eq name 'updated_at') (eq name 'created_by') (eq name 'updated_by'))}}
+      {{name}}: schema.{{name}},
+      {{/unless}}
+      {{/unless}}
+      {{/each}}
+    };
+
+    // Auto-fill created_by from JWT if table has this field
+    {{#each columns}}
+    {{#if (eq name 'created_by')}}
+    if (request.user?.id) {
+      result.created_by = request.user.id;
+    }
+    {{/if}}
+    {{/each}}
+
+    return result;
+  }
+
+  /**
+   * Transform API update schema to domain model  
+   */
+  private transformUpdateSchema(schema: Static<typeof Update{{ModuleName}}Schema>, request: FastifyRequest) {
+    const updateData: any = {};
+    
+    {{#each columns}}
+    {{#unless isPrimaryKey}}
+    {{#unless (or (eq name 'created_at') (eq name 'updated_at') (eq name 'created_by') (eq name 'updated_by'))}}
+    if (schema.{{name}} !== undefined) {
+      updateData.{{name}} = schema.{{name}};
+    }
+    {{/unless}}
+    {{/unless}}
+    {{/each}}
+
+    // Auto-fill updated_by from JWT if table has this field
+    {{#each columns}}
+    {{#if (eq name 'updated_by')}}
+    if (request.user?.id) {
+      updateData.updated_by = request.user.id;
+    }
+    {{/if}}
+    {{/each}}
+    
+    return updateData;
+  }
+}

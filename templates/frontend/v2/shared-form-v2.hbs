@@ -1,0 +1,403 @@
+import {
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  OnInit,
+  Output,
+  SimpleChanges,
+  inject,
+  signal,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import {
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+  AbstractControl,
+} from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule, MatOptionModule } from '@angular/material/core';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatIconModule } from '@angular/material/icon';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
+
+import {
+  {{pascalCase singularName}},
+  Create{{pascalCase singularName}}Request,
+  Update{{pascalCase singularName}}Request,
+} from '../types/{{kebabCase moduleName}}.types';
+{{#if hasForeignKeys}}
+// CRUD-GENERATOR-TAG: Foreign Key Service Import
+{{#each foreignKeys}}
+import { {{pascalCase this.referencedModule}}Service } from '../../{{kebabCase this.referencedModule}}/services/{{kebabCase this.referencedModule}}.service';
+{{/each}}
+{{/if}}
+{{#if hasDateFields}}
+import {
+  formatDateForInput,
+  formatDateForSubmission,
+} from '../../../shared/utils/datetime.utils';
+{{/if}}
+
+export type {{pascalCase singularName}}FormMode = 'create' | 'edit';
+
+export interface {{pascalCase singularName}}FormData {
+{{#each fields}}
+  {{this.name}}{{#unless this.required}}?{{/unless}}: string;
+{{/each}}
+}
+
+@Component({
+  selector: 'app-{{kebabCase moduleName}}-form',
+  standalone: true,
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatCheckboxModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    MatProgressSpinnerModule,
+    MatOptionModule,
+    MatIconModule,
+    MatChipsModule,
+    MatTooltipModule,
+  ],
+  template: `
+    <form [formGroup]="{{camelCase moduleName}}Form" class="{{kebabCase moduleName}}-form">
+      {{#each fields}}
+      <!-- {{this.name}} Field -->
+      {{#if (eq this.inputType 'textarea')}}
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{this.label}}</mat-label>
+        <textarea
+          matInput
+          formControlName="{{this.name}}"
+          placeholder="Enter {{lowercase this.label}}"
+          rows="3"
+        ></textarea>
+        {{#if this.required}}
+        <mat-error *ngIf="{{../camelCase moduleName}}Form.get('{{this.name}}')?.hasError('required')">
+          {{this.label}} is required
+        </mat-error>
+        {{/if}}
+        {{#if this.maxLength}}
+        <mat-error *ngIf="{{../camelCase moduleName}}Form.get('{{this.name}}')?.hasError('maxlength')">
+          {{this.label}} must be less than {{this.maxLength}} characters
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{else if (eq this.inputType 'select')}}
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{this.label}}</mat-label>
+        <mat-select
+          formControlName="{{this.name}}"
+          [disabled]="loading{{pascalCase this.referencedModule}}Service()"
+        >
+          <mat-option *ngIf="loading{{pascalCase this.referencedModule}}Service()" disabled>
+            <mat-spinner diameter="16"></mat-spinner>
+            Loading {{lowercase this.referencedModule}}...
+          </mat-option>
+          <mat-option
+            *ngFor="let item of {{camelCase this.referencedModule}}ServiceOptions()"
+            [value]="item.value"
+          >
+            {{{{ item.label }}}}
+          </mat-option>
+        </mat-select>
+        {{#if this.required}}
+        <mat-error *ngIf="{{../camelCase moduleName}}Form.get('{{this.name}}')?.hasError('required')">
+          {{this.label}} is required
+        </mat-error>
+        {{/if}}
+        <mat-hint
+          *ngIf="
+            !loading{{pascalCase this.referencedModule}}Service() && {{camelCase this.referencedModule}}ServiceOptions().length === 0
+          "
+        >
+          No {{lowercase this.referencedModule}} available
+        </mat-hint>
+      </mat-form-field>
+      {{else if (eq this.inputType 'checkbox')}}
+      <div class="checkbox-field">
+        <mat-checkbox formControlName="{{this.name}}"> {{this.label}} </mat-checkbox>
+      </div>
+      {{else if (eq this.inputType 'date')}}
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{this.label}}</mat-label>
+        <input
+          matInput
+          [matDatepicker]="{{this.name}}Picker"
+          formControlName="{{this.name}}"
+          placeholder="Enter {{lowercase this.label}}"
+        />
+        <mat-datepicker-toggle
+          matSuffix
+          [for]="{{this.name}}Picker"
+        ></mat-datepicker-toggle>
+        <mat-datepicker #{{this.name}}Picker></mat-datepicker>
+      </mat-form-field>
+      {{else}}
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>{{this.label}}</mat-label>
+        <input
+          matInput
+          type="{{this.inputType}}"
+          formControlName="{{this.name}}"
+          placeholder="Enter {{lowercase this.label}}"
+          {{#if (eq this.inputType 'number')}}
+          {{#if this.isDecimal}}
+          step="0.01"
+          {{/if}}
+          {{/if}}
+        />
+        {{#if this.required}}
+        <mat-error *ngIf="{{../camelCase moduleName}}Form.get('{{this.name}}')?.hasError('required')">
+          {{this.label}} is required
+        </mat-error>
+        {{/if}}
+        {{#if this.maxLength}}
+        <mat-error *ngIf="{{../camelCase moduleName}}Form.get('{{this.name}}')?.hasError('maxlength')">
+          {{this.label}} must be less than {{this.maxLength}} characters
+        </mat-error>
+        {{/if}}
+      </mat-form-field>
+      {{/if}}
+
+      {{/each}}
+      <!-- Form Actions -->
+      <div class="form-actions">
+        <button
+          mat-button
+          type="button"
+          (click)="onCancel()"
+          [disabled]="loading"
+        >
+          Cancel
+        </button>
+        <button
+          mat-raised-button
+          color="primary"
+          type="button"
+          (click)="onSubmit()"
+          [disabled]="
+            {{camelCase moduleName}}Form.invalid || loading || (mode === 'edit' && !hasChanges())
+          "
+        >
+          <mat-spinner
+            diameter="20"
+            class="inline-spinner"
+            *ngIf="loading"
+          ></mat-spinner>
+          {{{{ mode === 'create' ? 'Create' : 'Update' }}}} {{pascalCase singularName}}
+        </button>
+      </div>
+    </form>
+  `,
+  styles: [
+    `
+      /* Tremor-inspired Form - Minimal Changes */
+      .{{kebabCase moduleName}}-form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 16px 0;
+      }
+
+      .full-width {
+        width: 100%;
+      }
+
+      /* Tremor Border Colors - Darker (from Tremor Blocks) */
+      ::ng-deep .{{kebabCase moduleName}}-form {
+        .mdc-text-field--outlined:not(.mdc-text-field--disabled) {
+          .mdc-notched-outline__leading,
+          .mdc-notched-outline__notch,
+          .mdc-notched-outline__trailing {
+            border-color: #d1d5db;
+            border-width: 1px;
+          }
+
+          &:hover .mdc-notched-outline {
+            .mdc-notched-outline__leading,
+            .mdc-notched-outline__notch,
+            .mdc-notched-outline__trailing {
+              border-color: #9ca3af;
+            }
+          }
+
+          &.mdc-text-field--focused .mdc-notched-outline {
+            .mdc-notched-outline__leading,
+            .mdc-notched-outline__notch,
+            .mdc-notched-outline__trailing {
+              border-color: #3b82f6;
+              border-width: 2px;
+            }
+          }
+        }
+
+        /* Error Messages - Tremor red */
+        .mat-mdc-form-field-error {
+          color: #ef4444;
+        }
+
+        /* Datepicker Toggle */
+        .mat-datepicker-toggle {
+          color: #6b7280;
+
+          &:hover {
+            color: #3b82f6;
+          }
+        }
+      }
+
+      /* Checkbox Field */
+      .checkbox-field {
+        margin: 8px 0;
+      }
+
+      /* Form Actions */
+      .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e5e7eb;
+      }
+
+      .inline-spinner {
+        margin-right: 8px;
+      }
+
+      @media (max-width: 768px) {
+        .form-actions {
+          flex-direction: column;
+          gap: 8px;
+        }
+      }
+    `,
+  ],
+})
+export class {{pascalCase singularName}}FormComponent implements OnInit, OnChanges {
+  private fb = inject(FormBuilder);
+  {{#if hasForeignKeys}}
+  // CRUD-GENERATOR-TAG: Foreign Key Service Injection
+  {{#each foreignKeys}}
+  private {{camelCase this.referencedModule}}Service = inject({{pascalCase this.referencedModule}}Service);
+  {{/each}}
+  {{/if}}
+
+  @Input() mode: {{pascalCase singularName}}FormMode = 'create';
+  @Input() initialData?: {{pascalCase singularName}};
+  @Input() loading = false;
+
+  @Output() formSubmit = new EventEmitter<{{pascalCase singularName}}FormData>();
+  @Output() formCancel = new EventEmitter<void>();
+
+  private originalFormValue: any;
+  {{#if hasForeignKeys}}
+  // CRUD-GENERATOR-TAG: Foreign Key Options State
+  {{#each foreignKeys}}
+  {{camelCase this.referencedModule}}ServiceOptions = signal<any[]>([]);
+  loading{{pascalCase this.referencedModule}}Service = signal<boolean>(false);
+  {{/each}}
+  {{/if}}
+
+  {{camelCase moduleName}}Form: FormGroup = this.fb.group({
+{{#each fields}}
+    {{this.name}}: [{{#if (eq this.inputType 'checkbox')}}false{{else}}''{{/if}}, [{{#if this.required}}Validators.required{{#if this.maxLength}}, {{/if}}{{/if}}{{#if this.maxLength}}Validators.maxLength({{this.maxLength}}){{/if}}]],
+{{/each}}
+  });
+
+  ngOnInit() {
+    {{#if hasForeignKeys}}
+    // CRUD-GENERATOR-TAG: Load Foreign Key Options
+    {{#each foreignKeys}}
+    this.load{{pascalCase this.referencedModule}}();
+    {{/each}}
+    {{/if}}
+    if (this.mode === 'edit' && this.initialData) {
+      this.populateForm(this.initialData);
+    }
+  }
+
+  {{#if hasForeignKeys}}
+  {{#each foreignKeys}}
+  // CRUD-GENERATOR-TAG: Foreign Key Data Loading Method
+  private async load{{pascalCase this.referencedModule}}() {
+    this.loading{{pascalCase this.referencedModule}}Service.set(true);
+    try {
+      const response = await this.{{camelCase this.referencedModule}}Service.getDropdownOptions();
+      this.{{camelCase this.referencedModule}}ServiceOptions.set(response || []);
+    } catch (error) {
+      console.error('Failed to load {{camelCase this.referencedModule}}Service:', error);
+      this.{{camelCase this.referencedModule}}ServiceOptions.set([]);
+    } finally {
+      this.loading{{pascalCase this.referencedModule}}Service.set(false);
+    }
+  }
+
+  {{/each}}
+  {{/if}}
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['initialData'] && this.initialData && this.mode === 'edit') {
+      this.populateForm(this.initialData);
+    }
+  }
+
+  private populateForm({{camelCase moduleName}}: {{pascalCase singularName}}) {
+    const formValue = {
+{{#each fields}}
+      {{this.name}}: {{#if (eq this.inputType 'date')}}{{../camelCase moduleName}}.{{this.name}}
+        ? new Date({{../camelCase moduleName}}.{{this.name}})
+        : null{{else}}{{../camelCase moduleName}}.{{this.name}}{{/if}},
+{{/each}}
+    };
+
+    this.{{camelCase moduleName}}Form.patchValue(formValue);
+    this.originalFormValue = this.{{camelCase moduleName}}Form.value;
+  }
+
+  hasChanges(): boolean {
+    if (this.mode === 'create') return true;
+    const currentValue = this.{{camelCase moduleName}}Form.value;
+    return (
+      JSON.stringify(currentValue) !== JSON.stringify(this.originalFormValue)
+    );
+  }
+
+  onSubmit() {
+    if (this.{{camelCase moduleName}}Form.valid) {
+      const formData = { ...this.{{camelCase moduleName}}Form.value } as {{pascalCase singularName}}FormData;
+
+      {{#if hasDateFields}}
+      // Convert date fields to date-only format for submission
+      {{#each dateFields}}
+      if (formData.{{this.name}}) {
+        formData.{{this.name}} = formatDateForSubmission(
+          formData.{{this.name}},
+        );
+      }
+      {{/each}}
+      {{/if}}
+
+      this.formSubmit.emit(formData);
+    }
+  }
+
+  onCancel() {
+    this.formCancel.emit();
+  }
+}
