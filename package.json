@@ -35,7 +35,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aegisx/crud-generator"
+    "url": "https://github.com/aegisx-platform/crud-generator"
+  },
+  "homepage": "https://github.com/aegisx-platform/crud-generator#readme",
+  "bugs": {
+    "url": "https://github.com/aegisx-platform/crud-generator/issues"
   },
   "dependencies": {
     "commander": "^12.0.0",
