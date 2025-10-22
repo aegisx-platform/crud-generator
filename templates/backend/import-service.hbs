@@ -1,0 +1,172 @@
+/**
+ * {{ModuleName}} Import Service
+ * Module-specific configuration for bulk import functionality
+ * Extends BaseImportService with {{ModuleName}}-specific configuration
+ */
+
+import { Knex } from 'knex';
+import { BaseImportService } from '../../../shared/services/base-import.service';
+import {
+  ImportModuleConfig,
+  ImportFieldConfig,
+  ImportValidationError,
+  ImportValidationSeverity,
+} from '../../../shared/services/import-config.interface';
+import {
+  type {{ModuleName}},
+  type Create{{ModuleName}},
+  {{ModuleName}}ErrorCode,
+  {{ModuleName}}ErrorMessages,
+} from '../types/{{moduleName}}.types';
+import { {{ModuleName}}Repository } from '../repositories/{{moduleName}}.repository';
+
+/**
+ * {{ModuleName}} Import Service Configuration
+ */
+export class {{ModuleName}}ImportService extends BaseImportService<{{ModuleName}}> {
+  constructor(
+    knex: Knex,
+    private {{moduleName}}Repository: {{ModuleName}}Repository,
+  ) {
+    super(knex, {{ModuleName}}ImportService.createConfig({{moduleName}}Repository));
+  }
+
+  /**
+   * Create module-specific import configuration
+   */
+  private static createConfig(
+    {{moduleName}}Repository: {{ModuleName}}Repository,
+  ): ImportModuleConfig<{{ModuleName}}> {
+    // Define field configurations
+    const fields: ImportFieldConfig[] = [
+{{#each importFields}}
+      {
+        name: '{{name}}',
+        label: '{{label}}',
+        required: {{required}},
+        type: '{{type}}',
+        {{#if maxLength}}maxLength: {{maxLength}},{{/if}}
+        description: '{{description}}',
+        {{#if exampleValue}}defaultExample: '{{exampleValue}}',{{/if}}
+        {{#if hasExampleGenerator}}exampleGenerator: {{../ModuleName}}ImportService.{{exampleGeneratorName}},{{/if}}
+        {{#if hasValidator}}validators: [{{../ModuleName}}ImportService.{{validatorName}}({{../moduleName}}Repository)],{{/if}}
+        {{#if hasTransformer}}transformer: {{../ModuleName}}ImportService.{{transformerName}},{{/if}}
+        {{#if errorMessages}}errorMessages: {
+          {{#each errorMessages}}{{@key}}: {{#if this.isErrorCode}}{{../../ModuleName}}ErrorMessages[{{../../ModuleName}}ErrorCode.{{this.code}}]{{else}}'{{this}}'{{/if}},
+          {{/each}}
+        },{{/if}}
+      },
+{{/each}}
+    ];
+
+    return {
+      moduleName: '{{moduleName}}',
+      displayName: '{{ModuleName}}',
+      fields,
+      maxRows: 10000,
+      allowWarnings: true,
+      sessionExpirationMinutes: 30,
+      batchSize: 100,
+      rowTransformer: {{ModuleName}}ImportService.transformRow,
+    };
+  }
+
+{{#each uniqueFields}}
+  /**
+   * Create {{name}} uniqueness validator
+   */
+  private static {{validatorName}}(
+    repository: {{ModuleName}}Repository,
+  ): (
+    value: any,
+    row: any,
+    index: number,
+  ) => Promise<ImportValidationError | null> {
+    return async (
+      value: any,
+      _row: any,
+      _index: number,
+    ) => {
+      if (!value) return null;
+
+      try {
+        const existing = await repository.findBy{{pascalCase name}}(value);
+        if (existing) {
+          return {
+            field: '{{name}}',
+            message: {{ModuleName}}ErrorMessages[{{ModuleName}}ErrorCode.DUPLICATE_{{uppercase name}}],
+            code: {{ModuleName}}ErrorCode.DUPLICATE_{{uppercase name}},
+            severity: ImportValidationSeverity.ERROR,
+            value,
+          };
+        }
+      } catch (error) {
+        console.error('{{pascalCase name}} uniqueness check failed:', error);
+      }
+
+      return null;
+    };
+  }
+
+{{/each}}
+{{#each customValidators}}
+  /**
+   * Create {{name}} validator{{#if description}} ({{description}}){{/if}}
+   */
+  private static {{validatorName}}(): (
+    value: any,
+    row: any,
+    index: number,
+  ) => ImportValidationError | null {
+    return (value: any, _row: any, _index: number): ImportValidationError | null => {
+      if (!value) return null;
+
+      {{validationLogic}}
+
+      return null;
+    };
+  }
+
+{{/each}}
+{{#each transformers}}
+  /**
+   * Transform {{name}} field values
+   */
+  private static {{transformerName}}(value: any, _row: any): {{returnType}} {
+    {{{transformLogic}}}
+  }
+
+{{/each}}
+  /**
+   * Transform row data to {{ModuleName}} entity format
+   */
+  private static transformRow(row: any): Partial<{{ModuleName}}> {
+    return {
+{{#each transformFields}}
+      {{name}}: {{transformExpression}},
+{{/each}}
+    };
+  }
+
+  /**
+   * Insert batch of {{moduleName}} into database
+   * Required implementation from BaseImportService
+   */
+  protected async insertBatch(batch: Partial<{{ModuleName}}>[]): Promise<{{ModuleName}}[]> {
+    const results: {{ModuleName}}[] = [];
+
+    for (const data of batch) {
+      try {
+        const created = await this.{{moduleName}}Repository.create(
+          data as Create{{ModuleName}},
+        );
+        results.push(created);
+      } catch (error) {
+        console.error('Failed to insert {{moduleName}}:', error);
+        throw error;
+      }
+    }
+
+    return results;
+  }
+}

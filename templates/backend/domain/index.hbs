@@ -4,6 +4,10 @@ import { {{ModuleName}}Controller } from './controllers/{{kebabCase currentRoute
 import { {{ModuleName}}Service } from './services/{{kebabCase currentRoute.camelName}}.service';
 import { {{ModuleName}}Repository } from './repositories/{{kebabCase currentRoute.camelName}}.repository';
 import { {{currentRoute.camelName}}Routes } from './routes/index';
+{{#if withImport}}
+import { {{currentRoute.camelName}}ImportRoutes } from './routes/{{kebabCase currentRoute.camelName}}-import.routes';
+import { {{ModuleName}}ImportService } from './services/{{kebabCase currentRoute.camelName}}-import.service';
+{{/if}}
 {{#if (or (eq package 'enterprise') (eq package 'full'))}}
 import { ExportService } from '../../services/export.service';
 {{/if}}
@@ -45,6 +49,12 @@ export default fp(
     {{else}}
     const {{moduleName}}Controller = new {{ModuleName}}Controller({{moduleName}}Service);
     {{/if}}
+    {{#if withImport}}
+    const {{moduleName}}ImportService = new {{ModuleName}}ImportService(
+      (fastify as any).knex,
+      {{moduleName}}Repository
+    );
+    {{/if}}
 
     // Optional: Decorate Fastify instance with service for cross-plugin access
     // fastify.decorate('{{moduleName}}Service', {{moduleName}}Service);
@@ -54,6 +64,14 @@ export default fp(
       controller: {{moduleName}}Controller,
       prefix: options.prefix || '/{{kebabCase tableName}}'
     });
+
+    {{#if withImport}}
+    // Register import routes
+    await fastify.register({{currentRoute.camelName}}ImportRoutes, {
+      controller: {{moduleName}}Controller,
+      prefix: options.prefix || '/{{kebabCase tableName}}'
+    });
+    {{/if}}
 
     // Lifecycle hooks for monitoring
     fastify.addHook('onReady', async () => {
