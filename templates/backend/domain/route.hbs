@@ -56,6 +56,7 @@ export async function {{currentRoute.camelName}}Routes(
         401: SchemaRefs.Unauthorized,
         403: SchemaRefs.Forbidden,
         409: SchemaRefs.Conflict,
+        422: SchemaRefs.UnprocessableEntity,
         500: SchemaRefs.ServerError
       }
     },
@@ -127,6 +128,7 @@ export async function {{currentRoute.camelName}}Routes(
         403: SchemaRefs.Forbidden,
         404: SchemaRefs.NotFound,
         409: SchemaRefs.Conflict,
+        422: SchemaRefs.UnprocessableEntity,
         500: SchemaRefs.ServerError
       }
     },
@@ -150,6 +152,7 @@ export async function {{currentRoute.camelName}}Routes(
         401: SchemaRefs.Unauthorized,
         403: SchemaRefs.Forbidden,
         404: SchemaRefs.NotFound,
+        422: SchemaRefs.UnprocessableEntity,
         500: SchemaRefs.ServerError
       }
     },

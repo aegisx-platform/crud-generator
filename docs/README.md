@@ -6,16 +6,12 @@ Modern CRUD API generator with TypeBox schemas, WebSocket events, and multi-pack
 
 ## 📚 Complete Documentation
 
-**For comprehensive documentation, see:** **[📖 Complete CRUD Generator Documentation](../../docs/features/crud-generator/README.md)**
+**For comprehensive documentation, see:** **[📖 Complete CRUD Generator Documentation](../../docs/crud-generator/README.md)**
 
-- **[📖 README](../../docs/features/crud-generator/README.md)** - System overview and achievements
-- **[👤 USER_GUIDE](../../docs/features/crud-generator/USER_GUIDE.md)** - Step-by-step usage guide
-- **[🛠️ DEVELOPER_GUIDE](../../docs/features/crud-generator/DEVELOPER_GUIDE.md)** - Technical implementation details
-- **[📚 API_REFERENCE](../../docs/features/crud-generator/API_REFERENCE.md)** - Complete API documentation
-- **[🏗️ ARCHITECTURE](../../docs/features/crud-generator/ARCHITECTURE.md)** - System architecture and design
-- **[🚀 DEPLOYMENT_GUIDE](../../docs/features/crud-generator/DEPLOYMENT_GUIDE.md)** - Production deployment
-- **[🔧 TROUBLESHOOTING](../../docs/features/crud-generator/TROUBLESHOOTING.md)** - Issue resolution guide
-- **[📚 DOCUMENTATION_INDEX](../../docs/features/crud-generator/DOCUMENTATION_INDEX.md)** - Navigation guide
+- **[📖 README](../../docs/crud-generator/README.md)** - Quick start and overview
+- **[📋 Error Handling Guide](../../docs/crud-generator/ERROR_HANDLING_GUIDE.md)** - Automatic error detection and handling
+- **[✅ Validation Reference](../../docs/crud-generator/VALIDATION_REFERENCE.md)** - Auto-detected validation rules
+- **[🧪 Testing Guide](../../docs/crud-generator/TESTING_GUIDE.md)** - Testing strategies and best practices
 
 ---
 

@@ -13,6 +13,7 @@ const {
   generateDomainModule,
   addRouteToDomain,
 } = require('../lib/generators/backend-generator');
+const FrontendGenerator = require('../lib/generators/frontend-generator');
 const { version } = require('../package.json');
 const TemplateManager = require('../lib/core/template-manager');
 const { promptGenerate } = require('../lib/prompts/generate-prompts');
@@ -177,38 +178,70 @@ program
         );
       }
 
-      // Choose generator based on structure type
-      const result = useFlat
-        ? await generateCrudModule(tableName, {
-            withEvents: options.withEvents,
+      // Choose generator based on target type
+      let result;
+
+      if (options.target === 'frontend') {
+        // Frontend generation using FrontendGenerator
+        console.log('\n🎨 Generating Angular frontend module...');
+
+        const toolsDir = path.join(__dirname, '..');
+        const frontendGenerator = new FrontendGenerator(
+          toolsDir,
+          PROJECT_ROOT,
+          { templateVersion: 'v2' },
+        );
+
+        const generatedFiles = await frontendGenerator.generateFrontendModule(
+          tableName,
+          {
+            enhanced:
+              options.package === 'enterprise' || options.package === 'full',
+            full: options.package === 'full',
             dryRun: options.dryRun,
             force: options.force,
-            outputDir: outputDir,
-            configFile: options.config,
-            app: options.app,
-            target: options.target,
-            directDb: options.directDb,
-            noRoles: options.noRoles,
-            migrationOnly: options.migrationOnly,
-            multipleRoles: options.multipleRoles,
-            package: options.package,
-            smartStats: options.smartStats,
-          })
-        : await generateDomainModule(tableName, {
-            withEvents: options.withEvents,
-            dryRun: options.dryRun,
-            force: options.force,
-            outputDir: outputDir,
-            configFile: options.config,
-            app: options.app,
-            target: options.target,
-            directDb: options.directDb,
-            noRoles: options.noRoles,
-            migrationOnly: options.migrationOnly,
-            multipleRoles: options.multipleRoles,
-            package: options.package,
-            smartStats: options.smartStats,
-          });
+          },
+        );
+
+        // Format result to match backend generator structure
+        result = {
+          files: generatedFiles.map((file) => ({ path: file })),
+          warnings: [],
+        };
+      } else {
+        // Backend generation using backend-generator
+        result = useFlat
+          ? await generateCrudModule(tableName, {
+              withEvents: options.withEvents,
+              dryRun: options.dryRun,
+              force: options.force,
+              outputDir: outputDir,
+              configFile: options.config,
+              app: options.app,
+              target: options.target,
+              directDb: options.directDb,
+              noRoles: options.noRoles,
+              migrationOnly: options.migrationOnly,
+              multipleRoles: options.multipleRoles,
+              package: options.package,
+              smartStats: options.smartStats,
+            })
+          : await generateDomainModule(tableName, {
+              withEvents: options.withEvents,
+              dryRun: options.dryRun,
+              force: options.force,
+              outputDir: outputDir,
+              configFile: options.config,
+              app: options.app,
+              target: options.target,
+              directDb: options.directDb,
+              noRoles: options.noRoles,
+              migrationOnly: options.migrationOnly,
+              multipleRoles: options.multipleRoles,
+              package: options.package,
+              smartStats: options.smartStats,
+            });
+      }
 
       if (options.dryRun) {
         console.log('\n📋 Files that would be generated:');

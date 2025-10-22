@@ -187,6 +187,87 @@ export class {{ModuleName}}Repository extends BaseRepository<{{ModuleName}}, Cre
   {{/unless}}
   {{/each}}
 
+  // ===== ERROR HANDLING: DUPLICATE DETECTION METHODS =====
+  {{#if hasUniqueConstraints}}
+
+  {{#each uniqueConstraints.singleField}}
+  /**
+   * Find by unique field: {{this}}
+   * Used for duplicate detection before insert/update
+   */
+  async findBy{{pascalCase this}}({{camelCase this}}: string | number): Promise<{{@root.ModuleName}} | null> {
+    const query = this.getJoinQuery();
+    const row = await query.where('{{@root.tableName}}.{{this}}', {{camelCase this}}).first();
+    return row ? this.transformToEntity(row) : null;
+  }
+
+  {{/each}}
+  {{#each uniqueConstraints.composite}}
+  /**
+   * Find by composite unique key: {{#each this}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+   * Used for duplicate detection before insert/update
+   */
+  async findBy{{#each this}}{{pascalCase this}}{{#unless @last}}And{{/unless}}{{/each}}(params: { {{#each this}}{{camelCase this}}: string | number{{#unless @last}}, {{/unless}}{{/each}} }): Promise<{{@root.ModuleName}} | null> {
+    const query = this.getJoinQuery();
+    {{#each this}}
+    query.where('{{@root.tableName}}.{{this}}', params.{{camelCase this}});
+    {{/each}}
+    const row = await query.first();
+    return row ? this.transformToEntity(row) : null;
+  }
+
+  {{/each}}
+  {{/if}}
+
+  // ===== ERROR HANDLING: DELETE VALIDATION METHODS =====
+  {{#if hasForeignKeyReferences}}
+
+  /**
+   * Check if record can be deleted
+   * Returns foreign key references that would prevent deletion
+   */
+  async canBeDeleted(id: string | number): Promise<{
+    canDelete: boolean;
+    blockedBy: Array<{
+      table: string;
+      field: string;
+      count: number;
+      cascade: boolean;
+    }>;
+  }> {
+    const blockedBy: Array<{
+      table: string;
+      field: string;
+      count: number;
+      cascade: boolean;
+    }> = [];
+
+    {{#each foreignKeyReferences}}
+    // Check {{table}} references
+    const {{camelCase table}}Count = await this.knex('{{table}}')
+      .where('{{field}}', id)
+      .count('* as count')
+      .first();
+
+    if (parseInt({{camelCase table}}Count?.count as string || '0') > 0) {
+      blockedBy.push({
+        table: '{{table}}',
+        field: '{{field}}',
+        count: parseInt({{camelCase table}}Count?.count as string || '0'),
+        cascade: {{#if cascade}}true{{else}}false{{/if}}
+      });
+    }
+
+    {{/each}}
+
+    return {
+      canDelete: blockedBy.length === 0 || blockedBy.every(ref => ref.cascade),
+      blockedBy
+    };
+  }
+
+  {{/if}}
+
   {{#if smartStats}}
   // Smart Statistics based on detected field patterns
   async getStats(): Promise<{
