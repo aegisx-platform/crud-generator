@@ -10,11 +10,11 @@ import { MatDividerModule } from '@angular/material/divider';
 import { {{PascalCase}} } from '../types/{{typesFileName}}';
 
 export interface {{PascalCase}}ViewDialogData {
-  {{camelCase moduleName}}: {{PascalCase}};
+  {{camelCaseHelper moduleName}}: {{PascalCase}};
 }
 
 @Component({
-  selector: 'app-{{kebabCase moduleName}}-view-dialog',
+  selector: 'app-{{kebabCaseHelper moduleName}}-view-dialog',
   standalone: true,
   imports: [
     CommonModule,
@@ -140,21 +140,21 @@ export interface {{PascalCase}}ViewDialogData {
             <div class="detail-row">
               <label class="detail-label">Created At</label>
               <div class="detail-value">
-                <span>\{{ data.{{camelCase moduleName}}.created_at | date:'full' }}</span>
+                <span>\{{ data.{{camelCaseHelper moduleName}}.created_at | date:'full' }}</span>
               </div>
             </div>
             
             <div class="detail-row">
               <label class="detail-label">Updated At</label>
               <div class="detail-value">
-                <span>\{{ data.{{camelCase moduleName}}.updated_at | date:'full' }}</span>
+                <span>\{{ data.{{camelCaseHelper moduleName}}.updated_at | date:'full' }}</span>
               </div>
             </div>
             
             <div class="detail-row">
               <label class="detail-label">ID</label>
               <div class="detail-value">
-                <code class="id-code">\{{ data.{{camelCase moduleName}}.id }}</code>
+                <code class="id-code">\{{ data.{{camelCaseHelper moduleName}}.id }}</code>
               </div>
             </div>
           </div>
@@ -319,6 +319,6 @@ export class {{PascalCase}}ViewDialogComponent {
   }
 
   onEdit() {
-    this.dialogRef.close({ action: 'edit', data: this.data.{{camelCase moduleName}} });
+    this.dialogRef.close({ action: 'edit', data: this.data.{{camelCaseHelper moduleName}} });
   }
 }

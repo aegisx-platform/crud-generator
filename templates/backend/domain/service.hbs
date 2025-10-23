@@ -158,7 +158,7 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
       {{/if}}
       
       if (deleted) {
-        console.log('{{ModuleName}} deleted successfully:', { id, {{#if displayNameField}}{{displayNameField}}: existing.{{displayNameField}}{{else}}name: existing.{{#each columns}}{{#if (or (eq name 'name') (eq name 'title') (eq name 'display_name'))}}{{name}}{{/if}}{{/each}}{{/if}} });
+        console.log('{{ModuleName}} deleted successfully:', { id{{#if displayNameField}}, {{displayNameField}}: existing.{{displayNameField}}{{/if}} });
       }
       
       return deleted;

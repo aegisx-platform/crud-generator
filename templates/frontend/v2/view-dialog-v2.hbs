@@ -8,18 +8,18 @@ import {
 } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
-import { {{pascalCase singularName}} } from '../types/{{kebabCase moduleName}}.types';
+import { {{pascalCaseHelper singularName}} } from '../types/{{kebabCaseHelper moduleName}}.types';
 
-export interface {{pascalCase singularName}}ViewDialogData {
-  {{camelCase moduleName}}: {{pascalCase singularName}};
+export interface {{pascalCaseHelper singularName}}ViewDialogData {
+  {{camelCaseHelper moduleName}}: {{pascalCaseHelper singularName}};
 }
 
 @Component({
-  selector: 'app-{{kebabCase moduleName}}-view-dialog',
+  selector: 'app-{{kebabCaseHelper moduleName}}-view-dialog',
   standalone: true,
   imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule],
   template: `
-    <h2 mat-dialog-title>{{pascalCase singularName}} Details</h2>
+    <h2 mat-dialog-title>{{pascalCaseHelper singularName}} Details</h2>
 
     <mat-dialog-content>
       <div class="content-grid">
@@ -83,7 +83,7 @@ export interface {{pascalCase singularName}}ViewDialogData {
       <button mat-button (click)="onClose()">Close</button>
       <button mat-raised-button color="primary" (click)="onEdit()">
         <mat-icon>edit</mat-icon>
-        Edit {{pascalCase singularName}}
+        Edit {{pascalCaseHelper singularName}}
       </button>
     </mat-dialog-actions>
   `,
@@ -174,15 +174,15 @@ export interface {{pascalCase singularName}}ViewDialogData {
     `,
   ],
 })
-export class {{pascalCase singularName}}ViewDialogComponent {
-  private dialogRef = inject(MatDialogRef<{{pascalCase singularName}}ViewDialogComponent>);
-  protected data = inject<{{pascalCase singularName}}ViewDialogData>(MAT_DIALOG_DATA);
+export class {{pascalCaseHelper singularName}}ViewDialogComponent {
+  private dialogRef = inject(MatDialogRef<{{pascalCaseHelper singularName}}ViewDialogComponent>);
+  protected data = inject<{{pascalCaseHelper singularName}}ViewDialogData>(MAT_DIALOG_DATA);
 
   onClose() {
     this.dialogRef.close();
   }
 
   onEdit() {
-    this.dialogRef.close({ action: 'edit', data: this.data.{{camelCase moduleName}} });
+    this.dialogRef.close({ action: 'edit', data: this.data.{{camelCaseHelper moduleName}} });
   }
 }

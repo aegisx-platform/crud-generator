@@ -8,7 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { DateRangeFilterComponent } from '../../../shared/components/date-range-filter/date-range-filter.component';
 
 @Component({
-  selector: 'app-{{kebabCase moduleName}}-list-filters',
+  selector: 'app-{{kebabCaseHelper moduleName}}-list-filters',
   standalone: true,
   imports: [
     CommonModule,
@@ -266,7 +266,7 @@ import { DateRangeFilterComponent } from '../../../shared/components/date-range-
   `,
   styles: [],
 })
-export class {{pascalCase moduleName}}ListFiltersComponent {
+export class {{pascalCaseHelper moduleName}}ListFiltersComponent {
   @Input({ required: true }) activeFilterCount!: number;
   @Input() loading = false;
 

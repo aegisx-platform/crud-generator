@@ -3,16 +3,16 @@ import { CommonModule } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
-import { {{PascalCase}}Service } from '../services/{{kebabCase moduleName}}.service';
+import { {{PascalCase}}Service } from '../services/{{kebabCaseHelper moduleName}}.service';
 import { {{PascalCase}}, Update{{PascalCase}}Request } from '../types/{{typesFileName}}';
-import { {{PascalCase}}FormComponent, {{PascalCase}}FormData } from './{{kebabCase moduleName}}-form.component';
+import { {{PascalCase}}FormComponent, {{PascalCase}}FormData } from './{{kebabCaseHelper moduleName}}-form.component';
 
 export interface {{PascalCase}}EditDialogData {
-  {{camelCase moduleName}}: {{PascalCase}};
+  {{camelCaseHelper moduleName}}: {{PascalCase}};
 }
 
 @Component({
-  selector: 'app-{{kebabCase moduleName}}-edit-dialog',
+  selector: 'app-{{kebabCaseHelper moduleName}}-edit-dialog',
   standalone: true,
   imports: [
     CommonModule,
@@ -24,13 +24,13 @@ export interface {{PascalCase}}EditDialogData {
       <h2 mat-dialog-title>Edit {{title}}</h2>
       
       <mat-dialog-content>
-        <app-{{kebabCase moduleName}}-form
+        <app-{{kebabCaseHelper moduleName}}-form
           mode="edit"
-          [initialData]="data.{{camelCase moduleName}}"
+          [initialData]="data.{{camelCaseHelper moduleName}}"
           [loading]="loading()"
           (formSubmit)="onFormSubmit($event)"
           (formCancel)="onCancel()"
-        ></app-{{kebabCase moduleName}}-form>
+        ></app-{{kebabCaseHelper moduleName}}-form>
       </mat-dialog-content>
     </div>
   `,
@@ -53,7 +53,7 @@ export interface {{PascalCase}}EditDialogData {
   `]
 })
 export class {{PascalCase}}EditDialogComponent implements OnInit {
-  private {{camelCase moduleName}}Service = inject({{PascalCase}}Service);
+  private {{camelCaseHelper moduleName}}Service = inject({{PascalCase}}Service);
   private snackBar = inject(MatSnackBar);
   private dialogRef = inject(MatDialogRef<{{PascalCase}}EditDialogComponent>);
   public data = inject<{{PascalCase}}EditDialogData>(MAT_DIALOG_DATA);
@@ -69,8 +69,8 @@ export class {{PascalCase}}EditDialogComponent implements OnInit {
     
     try {
       const updateRequest = formData as Update{{PascalCase}}Request;
-      const result = await this.{{camelCase moduleName}}Service.update{{PascalCase}}(
-        this.data.{{camelCase moduleName}}.id, 
+      const result = await this.{{camelCaseHelper moduleName}}Service.update{{PascalCase}}(
+        this.data.{{camelCaseHelper moduleName}}.id, 
         updateRequest
       );
       
@@ -85,7 +85,7 @@ export class {{PascalCase}}EditDialogComponent implements OnInit {
         });
       }
     } catch (error: any) {
-      const errorMessage = this.{{camelCase moduleName}}Service.permissionError()
+      const errorMessage = this.{{camelCaseHelper moduleName}}Service.permissionError()
         ? 'You do not have permission to update {{title}}'
         : error?.message || 'Failed to update {{title}}';
       this.snackBar.open(

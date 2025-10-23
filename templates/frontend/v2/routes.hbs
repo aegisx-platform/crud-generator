@@ -4,8 +4,8 @@ export const {{moduleName}}Routes: Routes = [
   {
     path: '',
     loadComponent: () =>
-      import('./components/{{kebabCase moduleName}}-list.component').then(
-        (m) => m.{{pascalCase moduleName}}ListComponent
+      import('./components/{{kebabCaseHelper moduleName}}-list.component').then(
+        (m) => m.{{pascalCaseHelper moduleName}}ListComponent
       ),
     title: '{{title}}'
   }

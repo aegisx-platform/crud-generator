@@ -654,7 +654,317 @@ export class {{ModuleName}}Controller {
     }
     {{/if}}
     {{/each}}
-    
+
     return updateData;
   }
+
+{{#if withImport}}
+
+  // ===== IMPORT METHODS =====
+
+  /**
+   * Download import template
+   * GET /{{moduleName}}/import/template
+   */
+  async downloadImportTemplate(
+    request: FastifyRequest<{
+      Querystring: {
+        format?: 'csv' | 'excel';
+        includeExample?: boolean;
+      };
+    }>,
+    reply: FastifyReply,
+  ) {
+    const { format = 'excel', includeExample = true } = request.query;
+    request.log.info({ format, includeExample }, 'Generating import template');
+
+    try {
+      const buffer = await this.importService.generateTemplate({
+        format,
+        includeExamples: includeExample,
+        exampleRowCount: 3,
+      });
+
+      const mimeTypes = {
+        csv: 'text/csv',
+        excel:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      };
+
+      const fileExtensions = {
+        csv: 'csv',
+        excel: 'xlsx',
+      };
+
+      const filename = `{{kebabCase}}-import-template.${fileExtensions[format]}`;
+
+      reply
+        .header('Content-Type', mimeTypes[format])
+        .header('Content-Disposition', `attachment; filename="${filename}"`)
+        .header('Content-Length', buffer.length);
+
+      request.log.info(
+        { format, filename, fileSize: buffer.length },
+        'Import template generated successfully',
+      );
+
+      return reply.send(buffer);
+    } catch (error: any) {
+      request.log.error(error, 'Failed to generate import template');
+      return reply.error(
+        'TEMPLATE_GENERATION_FAILED',
+        error.message || 'Failed to generate import template',
+        500,
+      );
+    }
+  }
+
+  /**
+   * Validate import file
+   * POST /{{moduleName}}/import/validate
+   */
+  async validateImport(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      // Use @aegisx/fastify-multipart clean API
+      const { files, fields } = await request.parseMultipart();
+
+      if (!files || files.length === 0) {
+        return reply
+          .code(400)
+          .error('NO_FILE_PROVIDED', 'No file provided in request');
+      }
+
+      const file = files[0]; // Get first file
+
+      // Parse options from string field
+      let options: any = {};
+      if (fields.options) {
+        try {
+          options = JSON.parse(fields.options);
+        } catch (error) {
+          return reply
+            .code(400)
+            .error('INVALID_OPTIONS', 'Invalid options JSON format');
+        }
+      }
+
+      request.log.info(
+        {
+          filename: file.filename,
+          mimetype: file.mimetype,
+          size: file.size,
+          options,
+        },
+        'Validating import file',
+      );
+
+      // Convert file to buffer
+      const fileBuffer = await file.toBuffer();
+
+      // Determine file type from extension
+      const fileExt = file.filename.toLowerCase().split('.').pop();
+      const fileType =
+        fileExt === 'csv' ? ('csv' as const) : ('excel' as const);
+
+      // Validate file using new interface
+      const result = await this.importService.validateFile({
+        file: fileBuffer,
+        fileName: file.filename,
+        fileType,
+      });
+
+      request.log.info(
+        {
+          sessionId: result.sessionId,
+          totalRows: result.summary.totalRows,
+          validRows: result.summary.validRows,
+          invalidRows: result.summary.invalidRows,
+        },
+        'Import file validated successfully',
+      );
+
+      // Get session and config to access ALL validated rows and transformer
+      const session = (this.importService as any).sessions.get(result.sessionId);
+      const validatedRows = session?.validatedRows || [];
+      const config = (this.importService as any).config;
+
+      // Map to ValidateImportApiResponseSchema format
+      const mappedResult = {
+        sessionId: result.sessionId,
+        // Root-level summary fields for frontend compatibility
+        totalRows: result.summary.totalRows,
+        validRows: result.summary.validRows,
+        invalidRows: result.summary.invalidRows,
+        // Detailed summary object
+        summary: {
+          totalRows: result.summary.totalRows,
+          validRows: result.summary.validRows,
+          invalidRows: result.summary.invalidRows,
+          warnings: result.summary.totalWarnings,
+          duplicates: 0, // TODO: Implement duplicate detection
+          willCreate: result.summary.validRows,
+          willSkip: 0,
+        },
+        errors: result.errors.flatMap((error) =>
+          error.errors.map((err) => ({
+            row: error.row,
+            field: err.field,
+            message: err.message,
+            value: err.value,
+          })),
+        ),
+        warnings: result.errors.flatMap((error) =>
+          error.warnings.map((warn) => ({
+            row: error.row,
+            field: warn.field,
+            message: warn.message,
+            value: warn.value,
+          })),
+        ),
+        // Preview: Transform raw data to match frontend expectations
+        preview: validatedRows.slice(0, 10).map((rowValidation, index) => {
+          const transformedData = config.rowTransformer && rowValidation.data
+            ? config.rowTransformer(rowValidation.data)
+            : rowValidation.data;
+
+          return {
+            rowNumber: rowValidation.row,
+            status: rowValidation.isValid ? 'valid' : 'error',
+            action: 'create', // Default action (can be enhanced with duplicate detection)
+            ...transformedData, // Spread entity fields directly
+            errors: rowValidation.errors,
+            warnings: rowValidation.warnings,
+          };
+        }),
+      };
+
+      return reply.success(mappedResult, 'Import file validated successfully');
+    } catch (error: any) {
+      request.log.error(error, 'Failed to validate import file');
+
+      // Handle specific multipart errors
+      if (error.code === 'FST_FILE_TOO_LARGE') {
+        return reply
+          .code(413)
+          .error('FILE_TOO_LARGE', 'File size exceeds 10MB limit');
+      }
+
+      return reply.error(
+        'VALIDATION_FAILED',
+        error.message || 'Failed to validate import file',
+        500,
+      );
+    }
+  }
+
+  /**
+   * Execute import
+   * POST /{{moduleName}}/import/execute
+   */
+  async executeImport(
+    request: FastifyRequest<{
+      Body: Static<typeof ExecuteImportRequestSchema>;
+    }>,
+    reply: FastifyReply,
+  ) {
+    const { sessionId, options } = request.body;
+    const userId = (request.user as any)?.id;
+
+    try {
+      request.log.info(
+        { sessionId, options, userId },
+        'Executing import job',
+      );
+
+      // Execute import and get job result
+      const result = await this.importService.executeImport({
+        sessionId,
+        skipWarnings: true, // Always skip warnings/errors - will import only valid rows
+      });
+
+      // Map to frontend-expected format
+      const mappedJob = {
+        jobId: result.jobId,
+        sessionId: sessionId,
+        status: result.status,
+        filename: result.summary.fileName || 'import',
+        totalRows: result.summary.totalRows,
+        progress: {
+          current: result.progress.current,
+          total: result.progress.total,
+          percentage: result.progress.percentage,
+        },
+        summary: {
+          successful: result.summary.successfulRows,
+          failed: result.summary.failedRows,
+          total: result.summary.totalRows,
+        },
+        startedAt: new Date().toISOString(),
+        message: result.message,
+      };
+
+      return reply.code(202).success(mappedJob, 'Import job started successfully');
+    } catch (error: any) {
+      request.log.error(error, 'Failed to execute import');
+      return reply.error(
+        'IMPORT_EXECUTION_FAILED',
+        error.message || 'Failed to execute import',
+        500,
+      );
+    }
+  }
+
+  /**
+   * Get import job status
+   * GET /{{moduleName}}/import/status/:jobId
+   */
+  async getImportStatus(
+    request: FastifyRequest<{ Params: { jobId: string } }>,
+    reply: FastifyReply,
+  ) {
+    const { jobId } = request.params;
+
+    try {
+      request.log.info({ jobId }, 'Getting import job status');
+
+      const status = await this.importService.getJobStatus(jobId);
+
+      if (!status) {
+        return reply
+          .code(404)
+          .error('JOB_NOT_FOUND', `Import job ${jobId} not found`);
+      }
+
+      // Map to frontend format
+      const mappedStatus = {
+        jobId: status.jobId,
+        status: status.status,
+        filename: status.summary.fileName || 'import',
+        totalRows: status.summary.totalRows,
+        progress: {
+          current: status.progress.current,
+          total: status.progress.total,
+          percentage: status.progress.percentage,
+        },
+        summary: {
+          successful: status.summary.successfulRows,
+          failed: status.summary.failedRows,
+          total: status.summary.totalRows,
+        },
+        startedAt: status.startedAt,
+        completedAt: status.completedAt,
+        message: status.message,
+      };
+
+      return reply.success(mappedStatus, 'Import job status retrieved successfully');
+    } catch (error: any) {
+      request.log.error(error, 'Failed to get import job status');
+      return reply.error(
+        'STATUS_RETRIEVAL_FAILED',
+        error.message || 'Failed to get import job status',
+        500,
+      );
+    }
+  }
+{{/if}}
 }

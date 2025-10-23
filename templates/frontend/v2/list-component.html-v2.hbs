@@ -6,18 +6,21 @@
     <!-- Header with Stats (hide stats when permission error) -->
     <app-{{lowercase moduleName}}-list-header
       [stats]="stats()"
-      [loading]="{{camelCase moduleName}}Service.loading()"
-      [permissionError]="{{camelCase moduleName}}Service.permissionError()"
-      [hasError]="!!{{camelCase moduleName}}Service.error()"
+      [loading]="{{camelCaseHelper moduleName}}Service.loading()"
+      [permissionError]="{{camelCaseHelper moduleName}}Service.permissionError()"
+      [hasError]="!!{{camelCaseHelper moduleName}}Service.error()"
       (createClicked)="openCreateDialog()"
-      (clearPermissionError)="{{camelCase moduleName}}Service.clearPermissionError()"
+{{#if withImport}}
+      (importClicked)="openImportDialog()"
+{{/if}}
+      (clearPermissionError)="{{camelCaseHelper moduleName}}Service.clearPermissionError()"
     ></app-{{lowercase moduleName}}-list-header>
 
     <!-- Filters Panel (hide when any error exists) -->
-    @if (!{{camelCase moduleName}}Service.error()) {
+    @if (!{{camelCaseHelper moduleName}}Service.error()) {
       <app-{{lowercase moduleName}}-list-filters
         [activeFilterCount]="getActiveFilterCount()"
-        [loading]="{{camelCase moduleName}}Service.loading()"
+        [loading]="{{camelCaseHelper moduleName}}Service.loading()"
         [(searchTerm)]="searchTerm"
         [(quickFilter)]="quickFilter"
         {{#each filters.string}}
@@ -106,10 +109,10 @@
 
     <!-- Content Area: Show based on state priority -->
     <!-- Priority 1: Error (403 or other errors) -->
-    @if ({{camelCase moduleName}}Service.error() && !{{camelCase moduleName}}Service.loading()) {
+    @if ({{camelCaseHelper moduleName}}Service.error() && !{{camelCaseHelper moduleName}}Service.loading()) {
       <ax-error-state
-        [statusCode]="{{camelCase moduleName}}Service.lastErrorStatus()"
-        [message]="{{camelCase moduleName}}Service.error() || ''"
+        [statusCode]="{{camelCaseHelper moduleName}}Service.lastErrorStatus()"
+        [message]="{{camelCaseHelper moduleName}}Service.error() || ''"
         [actions]="[
           {
             label: 'Try Again',
@@ -131,7 +134,7 @@
     }
 
     <!-- Priority 3: Empty State (no data, no error, not loading) -->
-    @else if (!{{camelCase moduleName}}Service.loading() && dataSource.data.length === 0) {
+    @else if (!{{camelCaseHelper moduleName}}Service.loading() && dataSource.data.length === 0) {
       <ax-empty-state
         icon="menu_book"
         title="No {{lowercase moduleName}} found"
@@ -233,11 +236,11 @@
             <ng-container matColumnDef="expandedDetail">
               <td
                 mat-cell
-                *matCellDef="let {{camelCase singularName}}"
+                *matCellDef="let {{camelCaseHelper singularName}}"
                 [attr.colspan]="displayedColumns.length"
                 class="!p-0 !border-b-0"
               >
-                @if (isRowExpanded({{camelCase singularName}})) {
+                @if (isRowExpanded({{camelCaseHelper singularName}})) {
                   <div class="pl-16 pr-5 py-3 bg-gray-50/50" [@detailExpand]>
                     <div class="max-w-4xl">
                       <div class="flex items-start gap-2">
@@ -251,7 +254,7 @@
                             Description
                           </h4>
                           <p class="text-sm text-gray-600 leading-relaxed">
-                            \{{ {{camelCase singularName}}.description }}
+                            \{{ {{camelCaseHelper singularName}}.description }}
                           </p>
                         </div>
                       </div>
@@ -268,7 +271,7 @@
               </th>
               <td
                 mat-cell
-                *matCellDef="let {{camelCase singularName}}"
+                *matCellDef="let {{camelCaseHelper singularName}}"
                 class="text-right"
                 (click)="$event.stopPropagation()"
               >
@@ -286,14 +289,14 @@
                   <button
                     type="button"
                     mat-menu-item
-                    (click)="onView{{pascalCase singularName}}({{camelCase singularName}})"
+                    (click)="onView{{pascalCaseHelper singularName}}({{camelCaseHelper singularName}})"
                   >
                     <mat-icon>visibility</mat-icon><span>View</span>
                   </button>
                   <button
                     type="button"
                     mat-menu-item
-                    (click)="onEdit{{pascalCase singularName}}({{camelCase singularName}})"
+                    (click)="onEdit{{pascalCaseHelper singularName}}({{camelCaseHelper singularName}})"
                   >
                     <mat-icon>edit</mat-icon><span>Edit</span>
                   </button>
@@ -301,7 +304,7 @@
                   <button
                     type="button"
                     mat-menu-item
-                    (click)="onDelete{{pascalCase singularName}}({{camelCase singularName}})"
+                    (click)="onDelete{{pascalCaseHelper singularName}}({{camelCaseHelper singularName}})"
                   >
                     <mat-icon class="text-red-600">delete</mat-icon
                     ><span>Delete</span>
@@ -316,7 +319,7 @@
               *matRowDef="let row; columns: displayedColumns"
               class="hover:bg-gray-50 cursor-pointer"
               [attr.data-{{lowercase singularName}}-id]="row.id"
-              (click)="onView{{pascalCase singularName}}(row)"
+              (click)="onView{{pascalCaseHelper singularName}}(row)"
             ></tr>
             <tr
               mat-row
@@ -328,7 +331,7 @@
 
         <!-- Paginator -->
         <mat-paginator
-          [length]="{{camelCase moduleName}}Service.total{{pascalCase singularName}}()"
+          [length]="{{camelCaseHelper moduleName}}Service.total{{pascalCaseHelper singularName}}()"
           [pageSize]="25"
           [pageSizeOptions]="[10, 25, 50, 100]"
           [pageIndex]="0"
