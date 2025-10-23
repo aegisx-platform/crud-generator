@@ -86,6 +86,7 @@ program
     false,
   )
   .option('--no-format', 'Skip auto-formatting generated files', false)
+  .option('--with-import', 'Include bulk import functionality (Excel/CSV upload)', false)
   .action(async (tableName, options) => {
     try {
       // Interactive mode if no table name provided
@@ -200,12 +201,24 @@ program
             full: options.package === 'full',
             dryRun: options.dryRun,
             force: options.force,
+            withImport: options.withImport,
           },
         );
 
         // Format result to match backend generator structure
+        // Handle both string paths and comma-separated path lists
+        const filePaths = generatedFiles.flatMap((file) => {
+          if (typeof file === 'string') {
+            // Split comma-separated paths if present
+            return file.includes(',') ? file.split(',').map(p => p.trim()) : [file.trim()];
+          }
+          // If it's already an object with path property, extract the path
+          const filePath = file.path || file;
+          return typeof filePath === 'string' ? [filePath.trim()] : [String(filePath).trim()];
+        });
+
         result = {
-          files: generatedFiles.map((file) => ({ path: file })),
+          files: filePaths.map((path) => ({ path })),
           warnings: [],
         };
       } else {
@@ -240,6 +253,7 @@ program
               multipleRoles: options.multipleRoles,
               package: options.package,
               smartStats: options.smartStats,
+              withImport: options.withImport,
             });
       }
 
