@@ -59,7 +59,7 @@ export class {{PascalCase}}StateManager extends BaseRealtimeStateManager<{{Pasca
 
     try {
       await this.{{camelCase}}Service.load{{PascalCase}}List({
-        limit: 10000,
+        limit: 1000,
         page: 1
       });
 
