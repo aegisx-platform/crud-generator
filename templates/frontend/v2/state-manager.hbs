@@ -60,7 +60,7 @@ export class {{PascalCase}}StateManager extends BaseRealtimeStateManager<{{Pasca
     try {
       await this.{{camelCase}}Service.load{{PascalCase}}List({
         limit: 10000,
-        offset: 0
+        page: 1
       });
 
       const items = this.{{camelCase}}Service.{{camelCase}}List();
@@ -82,6 +82,9 @@ export class {{PascalCase}}StateManager extends BaseRealtimeStateManager<{{Pasca
 
     try {
       const result = await this.{{camelCase}}Service.create{{PascalCase}}(data);
+      if (!result) {
+        throw new Error('Failed to create {{singularLowerCase}}: Server returned null');
+      }
       console.log('✅ {{PascalCase}} created on server:', result);
 
       return result;
@@ -99,7 +102,10 @@ export class {{PascalCase}}StateManager extends BaseRealtimeStateManager<{{Pasca
     console.log('🔄 Updating {{singularLowerCase}} on server:', { id, changes });
 
     try {
-      const result = await this.{{camelCase}}Service.update{{PascalCase}}(id as string, changes);
+      const result = await this.{{camelCase}}Service.update{{PascalCase}}(id as number, changes);
+      if (!result) {
+        throw new Error('Failed to update {{singularLowerCase}}: Server returned null');
+      }
       console.log('✅ {{PascalCase}} updated on server:', result);
 
       return result;
@@ -117,7 +123,7 @@ export class {{PascalCase}}StateManager extends BaseRealtimeStateManager<{{Pasca
     console.log('🗑️ Deleting {{singularLowerCase}} from server:', id);
 
     try {
-      await this.{{camelCase}}Service.delete{{PascalCase}}(id as string);
+      await this.{{camelCase}}Service.delete{{PascalCase}}(id as number);
       console.log('✅ {{PascalCase}} deleted from server');
     } catch (error) {
       console.error('❌ Failed to delete {{singularLowerCase}}:', error);
@@ -135,7 +141,7 @@ export class {{PascalCase}}StateManager extends BaseRealtimeStateManager<{{Pasca
   /**
    * Lifecycle hook: Called when WebSocket connection is established
    */
-  protected onRealtimeConnected(): void {
+  protected override onRealtimeConnected(): void {
     console.log('✅ {{PascalCase}} real-time connection established');
     // Sync with server when connection is restored
     this.syncWithServer().catch(error => {
@@ -146,28 +152,28 @@ export class {{PascalCase}}StateManager extends BaseRealtimeStateManager<{{Pasca
   /**
    * Lifecycle hook: Called when WebSocket connection is lost
    */
-  protected onRealtimeDisconnected(): void {
+  protected override onRealtimeDisconnected(): void {
     console.warn('⚠️ {{PascalCase}} real-time connection lost - operating in offline mode');
   }
 
   /**
    * Lifecycle hook: Called when bulk operation starts
    */
-  protected onBulkOperationStarted(data: { operationId: string; total: number; operation: string }): void {
+  protected override onBulkOperationStarted(data: { operationId: string; total: number; operation: string }): void {
     console.log('📦 Bulk operation started:', data);
   }
 
   /**
    * Lifecycle hook: Called during bulk operation progress
    */
-  protected onBulkOperationProgress(data: { operationId: string; progress: any }): void {
+  protected override onBulkOperationProgress(data: { operationId: string; progress: any }): void {
     console.log('📊 Bulk operation progress:', data);
   }
 
   /**
    * Lifecycle hook: Called when bulk operation completes
    */
-  protected onBulkOperationCompleted(data: { operationId: string; results: any }): void {
+  protected override onBulkOperationCompleted(data: { operationId: string; results: any }): void {
     console.log('✅ Bulk operation completed:', data);
     // Refresh local state after bulk operations
     this.syncWithServer().catch(error => {
@@ -178,7 +184,7 @@ export class {{PascalCase}}StateManager extends BaseRealtimeStateManager<{{Pasca
   /**
    * Lifecycle hook: Called when conflict is detected
    */
-  protected onConflictDetected(entityId: string | number, conflict: ConflictInfo): void {
+  protected override onConflictDetected(entityId: string | number, conflict: ConflictInfo): void {
     console.warn('🚨 Conflict detected for {{singularLowerCase}}:', entityId, conflict);
 
     // Default strategy: Accept server version
@@ -189,14 +195,14 @@ export class {{PascalCase}}StateManager extends BaseRealtimeStateManager<{{Pasca
   /**
    * Lifecycle hook: Called when entity is locked by another user
    */
-  protected onEntityLocked(entityId: string | number, userId: string, lockType?: string): void {
+  protected override onEntityLocked(entityId: string | number, userId: string, lockType?: string): void {
     console.log('🔒 {{PascalCase}} locked:', { entityId, userId, lockType });
   }
 
   /**
    * Lifecycle hook: Called when entity is unlocked
    */
-  protected onEntityUnlocked(entityId: string | number, userId: string): void {
+  protected override onEntityUnlocked(entityId: string | number, userId: string): void {
     console.log('🔓 {{PascalCase}} unlocked:', { entityId, userId });
   }
 

@@ -12,7 +12,7 @@ import { FormsModule } from '@angular/forms';
 {{#if withEvents}}
 import { takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
-import { WebSocketService } from '@shared/services/web-socket.service';
+import { WebSocketService } from '../../../shared/business/services/websocket.service';
 {{/if}}
 
 import { {{PascalCase}}Service } from '../services/{{kebabCase}}.service';
@@ -1089,9 +1089,9 @@ export class {{PascalCase}}ImportDialogComponent implements OnDestroy {
 {{#if withEvents}}
   private setupWebSocketListener(jobId: string): void {
     this.wsService
-      .listen<any>('{{kebabCase}}:import-progress')
+      .subscribeToEvent('{{kebabCase}}', 'import', 'progress')
       .pipe(takeUntil(this.destroy$))
-      .subscribe((event) => {
+      .subscribe((event: any) => {
         // Only process events for this job
         if (event.jobId !== jobId) return;
 
