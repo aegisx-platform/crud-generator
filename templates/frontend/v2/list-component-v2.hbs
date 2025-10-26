@@ -54,6 +54,9 @@ import {
 } from '../../../shared/components/shared-export/shared-export.component';
 import { {{pascalCaseHelper singularName}}Service } from '../services/{{lowercase moduleName}}.service';
 import { {{pascalCaseHelper singularName}}, List{{pascalCaseHelper singularName}}Query } from '../types/{{lowercase moduleName}}.types';
+{{#if withEvents}}
+import { {{pascalCaseHelper singularName}}StateManager } from '../services/{{lowercase moduleName}}-state-manager.service';
+{{/if}}
 import { {{pascalCaseHelper singularName}}CreateDialogComponent } from './{{lowercase moduleName}}-create.dialog';
 import {
   {{pascalCaseHelper singularName}}EditDialogComponent,
@@ -111,6 +114,9 @@ import { {{pascalCaseHelper moduleName}}ListHeaderComponent } from './{{lowercas
 })
 export class {{pascalCaseHelper moduleName}}ListComponent {
   {{camelCaseHelper moduleName}}Service = inject({{pascalCaseHelper singularName}}Service);
+{{#if withEvents}}
+  {{camelCaseHelper singularName}}StateManager = inject({{pascalCaseHelper singularName}}StateManager);
+{{/if}}
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private axDialog = inject(AxDialogService);
@@ -364,6 +370,11 @@ export class {{pascalCaseHelper moduleName}}ListComponent {
 
   // --- Effect: reload {{lowercase moduleName}} on sort/page/search/filter change ---
   constructor() {
+{{#if withEvents}}
+    // Initialize real-time state manager
+    this.{{camelCaseHelper singularName}}StateManager.initialize();
+{{/if}}
+
     // Sync export selection state
     effect(() => {
       const ids = new Set(this.selection.selected.map((b) => b.id));
@@ -461,11 +472,20 @@ export class {{pascalCaseHelper moduleName}}ListComponent {
           delete params[k as keyof typeof params],
       );
 
+{{#if withEvents}}
+      // With real-time state manager: Use synced data instead of manual API calls
+      this.dataSource.data = this.{{camelCaseHelper singularName}}StateManager.localState();
+      if (this.paginator) {
+        // TODO: State manager doesn't track total count yet, fallback to service
+        this.paginator.length = this.{{camelCaseHelper moduleName}}Service.total{{pascalCaseHelper singularName}}();
+      }
+{{else}}
       await this.{{camelCaseHelper moduleName}}Service.load{{pascalCaseHelper singularName}}List(params);
       this.dataSource.data = this.{{camelCaseHelper moduleName}}Service.{{camelCaseHelper moduleName}}List();
       if (this.paginator) {
         this.paginator.length = this.{{camelCaseHelper moduleName}}Service.total{{pascalCaseHelper singularName}}();
       }
+{{/if}}
     });
   }
 
@@ -774,11 +794,20 @@ export class {{pascalCaseHelper moduleName}}ListComponent {
     this.axDialog.confirmDelete(itemName).subscribe(async (confirmed) => {
       if (confirmed) {
         try {
+{{#if withEvents}}
+          // Use state manager's optimistic delete for real-time UI updates
+          await this.{{camelCaseHelper singularName}}StateManager.optimisticDelete({{camelCaseHelper singularName}}.id);
+          this.snackBar.open('{{pascalCaseHelper singularName}} deleted successfully', 'Close', {
+            duration: 3000,
+          });
+          // No need to reload - state manager auto-updates dataSource via effect
+{{else}}
           await this.{{camelCaseHelper moduleName}}Service.delete{{pascalCaseHelper singularName}}({{camelCaseHelper singularName}}.id);
           this.snackBar.open('{{pascalCaseHelper singularName}} deleted successfully', 'Close', {
             duration: 3000,
           });
           this.reloadTrigger.update((n) => n + 1);
+{{/if}}
         } catch {
           this.snackBar.open('Failed to delete {{lowercase singularName}}', 'Close', {
             duration: 3000,
