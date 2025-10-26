@@ -1,0 +1,242 @@
+import { Injectable, inject } from '@angular/core';
+import {
+  BaseRealtimeStateManager,
+  BaseEntity,
+  ConflictInfo
+} from '../../../shared/business/services/base-realtime-state-manager';
+import { {{PascalCase}}Service } from './{{kebabCase}}.service';
+import { {{PascalCase}} } from '../types/{{kebabCase}}.types';
+
+/**
+ * Real-time State Manager for {{PascalCase}}
+ *
+ * Features:
+ * - Automatic WebSocket synchronization
+ * - Optimistic updates
+ * - Conflict detection and resolution
+ * - Offline support with pending operations queue
+ *
+ * Usage:
+ * ```typescript
+ * class MyComponent {
+ *   private stateManager = inject({{PascalCase}}StateManager);
+ *
+ *   // Subscribe to real-time state
+ *   {{camelCase}}List = this.stateManager.localState;
+ *
+ *   // Create with optimistic update
+ *   async create() {
+ *     await this.stateManager.optimisticCreate(data);
+ *   }
+ * }
+ * ```
+ */
+@Injectable({
+  providedIn: 'root'
+})
+export class {{PascalCase}}StateManager extends BaseRealtimeStateManager<{{PascalCase}}> {
+  private {{camelCase}}Service = inject({{PascalCase}}Service);
+
+  constructor() {
+    super({
+      feature: '{{pluralKebabCase}}',
+      entity: '{{singularKebabCase}}',
+      enableOptimisticUpdates: true,
+      enableConflictDetection: true,
+      debounceMs: 300,
+      retryAttempts: 3
+    });
+
+    console.log('🎯 {{PascalCase}}StateManager initialized with real-time features');
+  }
+
+  /**
+   * Fetch {{pluralLowerCase}} from server
+   * Called during sync operations
+   */
+  protected async fetchFromServer(): Promise<{{PascalCase}}[]> {
+    console.log('📡 Fetching {{pluralLowerCase}} from server...');
+
+    try {
+      await this.{{camelCase}}Service.load{{PascalCase}}List({
+        limit: 10000,
+        offset: 0
+      });
+
+      const items = this.{{camelCase}}Service.{{camelCase}}List();
+      console.log(`✅ Fetched ${items.length} {{pluralLowerCase}} from server`);
+
+      return items;
+    } catch (error) {
+      console.error('❌ Failed to fetch {{pluralLowerCase}}:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create {{singularLowerCase}} on server
+   * Called after optimistic create to persist to server
+   */
+  protected async serverCreate(data: Omit<{{PascalCase}}, 'id'>): Promise<{{PascalCase}}> {
+    console.log('🚀 Creating {{singularLowerCase}} on server:', data);
+
+    try {
+      const result = await this.{{camelCase}}Service.create{{PascalCase}}(data);
+      console.log('✅ {{PascalCase}} created on server:', result);
+
+      return result;
+    } catch (error) {
+      console.error('❌ Failed to create {{singularLowerCase}}:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update {{singularLowerCase}} on server
+   * Called after optimistic update to persist to server
+   */
+  protected async serverUpdate(id: string | number, changes: Partial<{{PascalCase}}>): Promise<{{PascalCase}}> {
+    console.log('🔄 Updating {{singularLowerCase}} on server:', { id, changes });
+
+    try {
+      const result = await this.{{camelCase}}Service.update{{PascalCase}}(id as string, changes);
+      console.log('✅ {{PascalCase}} updated on server:', result);
+
+      return result;
+    } catch (error) {
+      console.error('❌ Failed to update {{singularLowerCase}}:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete {{singularLowerCase}} from server
+   * Called after optimistic delete to persist to server
+   */
+  protected async serverDelete(id: string | number): Promise<void> {
+    console.log('🗑️ Deleting {{singularLowerCase}} from server:', id);
+
+    try {
+      await this.{{camelCase}}Service.delete{{PascalCase}}(id as string);
+      console.log('✅ {{PascalCase}} deleted from server');
+    } catch (error) {
+      console.error('❌ Failed to delete {{singularLowerCase}}:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Extract entity ID for conflict detection
+   */
+  protected extractEntityId(entity: any): string | number {
+    return entity.id;
+  }
+
+  /**
+   * Lifecycle hook: Called when WebSocket connection is established
+   */
+  protected onRealtimeConnected(): void {
+    console.log('✅ {{PascalCase}} real-time connection established');
+    // Sync with server when connection is restored
+    this.syncWithServer().catch(error => {
+      console.error('Failed to sync after reconnection:', error);
+    });
+  }
+
+  /**
+   * Lifecycle hook: Called when WebSocket connection is lost
+   */
+  protected onRealtimeDisconnected(): void {
+    console.warn('⚠️ {{PascalCase}} real-time connection lost - operating in offline mode');
+  }
+
+  /**
+   * Lifecycle hook: Called when bulk operation starts
+   */
+  protected onBulkOperationStarted(data: { operationId: string; total: number; operation: string }): void {
+    console.log('📦 Bulk operation started:', data);
+  }
+
+  /**
+   * Lifecycle hook: Called during bulk operation progress
+   */
+  protected onBulkOperationProgress(data: { operationId: string; progress: any }): void {
+    console.log('📊 Bulk operation progress:', data);
+  }
+
+  /**
+   * Lifecycle hook: Called when bulk operation completes
+   */
+  protected onBulkOperationCompleted(data: { operationId: string; results: any }): void {
+    console.log('✅ Bulk operation completed:', data);
+    // Refresh local state after bulk operations
+    this.syncWithServer().catch(error => {
+      console.error('Failed to sync after bulk operation:', error);
+    });
+  }
+
+  /**
+   * Lifecycle hook: Called when conflict is detected
+   */
+  protected onConflictDetected(entityId: string | number, conflict: ConflictInfo): void {
+    console.warn('🚨 Conflict detected for {{singularLowerCase}}:', entityId, conflict);
+
+    // Default strategy: Accept server version
+    // Override this method to implement custom conflict resolution
+    this.resolveConflict(entityId, 'accept_server');
+  }
+
+  /**
+   * Lifecycle hook: Called when entity is locked by another user
+   */
+  protected onEntityLocked(entityId: string | number, userId: string, lockType?: string): void {
+    console.log('🔒 {{PascalCase}} locked:', { entityId, userId, lockType });
+  }
+
+  /**
+   * Lifecycle hook: Called when entity is unlocked
+   */
+  protected onEntityUnlocked(entityId: string | number, userId: string): void {
+    console.log('🔓 {{PascalCase}} unlocked:', { entityId, userId });
+  }
+
+  /**
+   * Public API: Initialize real-time features
+   * Call this from your component's constructor or ngOnInit
+   */
+  public async initialize(): Promise<void> {
+    console.log('🚀 Initializing {{PascalCase}} real-time features...');
+
+    try {
+      await this.syncWithServer();
+      console.log('✅ {{PascalCase}} state manager ready');
+    } catch (error) {
+      console.error('❌ Failed to initialize {{PascalCase}} state manager:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Public API: Force refresh from server
+   * Useful for manual refresh buttons
+   */
+  public async refresh(): Promise<void> {
+    console.log('🔄 Refreshing {{pluralLowerCase}}...');
+    await this.syncWithServer();
+  }
+
+  /**
+   * Public API: Get sync statistics
+   */
+  public getSyncStats() {
+    return {
+      localCount: this.localState().length,
+      serverCount: this.serverState().length,
+      conflictCount: this.conflicts().size,
+      pendingOperations: this.pendingOperations().length,
+      lastSync: this.lastSync(),
+      syncStatus: this.syncStatus(),
+      isConnected: this.isConnected()
+    };
+  }
+}
