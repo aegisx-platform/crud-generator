@@ -28,7 +28,7 @@ export class {{ModuleName}}ImportService extends BaseImportService<{{ModuleName}
     knex: Knex,
     private {{moduleName}}Repository: {{ModuleName}}Repository,
   ) {
-    super(knex, {{ModuleName}}ImportService.createConfig({{moduleName}}Repository));
+    super(knex, {{ModuleName}}ImportService.createConfig({{moduleName}}Repository), '{{moduleName}}');
   }
 
   /**
