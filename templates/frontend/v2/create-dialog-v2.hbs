@@ -7,6 +7,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { {{pascalCaseHelper singularName}}Service } from '../services/{{kebabCaseHelper moduleName}}.service';
 import { Create{{pascalCaseHelper singularName}}Request } from '../types/{{kebabCaseHelper moduleName}}.types';
+{{#if withEvents}}
+import { {{pascalCaseHelper singularName}}StateManager } from '../services/{{kebabCaseHelper moduleName}}-state-manager.service';
+{{/if}}
 import { {{pascalCaseHelper singularName}}FormComponent, {{pascalCaseHelper singularName}}FormData } from './{{kebabCaseHelper moduleName}}-form.component';
 
 @Component({
@@ -155,12 +158,42 @@ import { {{pascalCaseHelper singularName}}FormComponent, {{pascalCaseHelper sing
 })
 export class {{pascalCaseHelper singularName}}CreateDialogComponent {
   private {{camelCaseHelper moduleName}}Service = inject({{pascalCaseHelper singularName}}Service);
+{{#if withEvents}}
+  private {{camelCaseHelper singularName}}StateManager = inject({{pascalCaseHelper singularName}}StateManager);
+{{/if}}
   private snackBar = inject(MatSnackBar);
   private dialogRef = inject(MatDialogRef<{{pascalCaseHelper singularName}}CreateDialogComponent>);
 
   loading = signal<boolean>(false);
 
   async onFormSubmit(formData: {{pascalCaseHelper singularName}}FormData) {
+{{#if withEvents}}
+    // Optimistic create: Close dialog immediately for instant UX
+    this.loading.set(true);
+
+    try {
+      const createRequest = formData as Create{{pascalCaseHelper singularName}}Request;
+
+      // Use state manager's optimistic create
+      const result = await this.{{camelCaseHelper singularName}}StateManager.optimisticCreate(createRequest as any);
+
+      // Show success message and close immediately
+      this.snackBar.open('{{pascalCaseHelper singularName}} created successfully', 'Close', {
+        duration: 3000,
+      });
+      this.dialogRef.close(true); // Close with success flag
+    } catch (error: any) {
+      const errorMessage = this.{{camelCaseHelper moduleName}}Service.permissionError()
+        ? 'You do not have permission to create {{lowercase singularName}}'
+        : error?.message || 'Failed to create {{lowercase singularName}}';
+      this.snackBar.open(errorMessage, 'Close', {
+        duration: 5000,
+        panelClass: ['error-snackbar'],
+      });
+    } finally {
+      this.loading.set(false);
+    }
+{{else}}
     this.loading.set(true);
 
     try {
@@ -188,6 +221,7 @@ export class {{pascalCaseHelper singularName}}CreateDialogComponent {
     } finally {
       this.loading.set(false);
     }
+{{/if}}
   }
 
   onCancel() {
