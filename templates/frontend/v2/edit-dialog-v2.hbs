@@ -9,21 +9,21 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { {{pascalCase singularName}}Service } from '../services/{{kebabCase moduleName}}.service';
-import { {{pascalCase singularName}}, Update{{pascalCase singularName}}Request } from '../types/{{kebabCase moduleName}}.types';
-import { {{pascalCase singularName}}FormComponent, {{pascalCase singularName}}FormData } from './{{kebabCase moduleName}}-form.component';
+import { {{pascalCaseHelper singularName}}Service } from '../services/{{kebabCaseHelper moduleName}}.service';
+import { {{pascalCaseHelper singularName}}, Update{{pascalCaseHelper singularName}}Request } from '../types/{{kebabCaseHelper moduleName}}.types';
+import { {{pascalCaseHelper singularName}}FormComponent, {{pascalCaseHelper singularName}}FormData } from './{{kebabCaseHelper moduleName}}-form.component';
 
-export interface {{pascalCase singularName}}EditDialogData {
-  {{camelCase moduleName}}: {{pascalCase singularName}};
+export interface {{pascalCaseHelper singularName}}EditDialogData {
+  {{camelCaseHelper moduleName}}: {{pascalCaseHelper singularName}};
 }
 
 @Component({
-  selector: 'app-{{kebabCase moduleName}}-edit-dialog',
+  selector: 'app-{{kebabCaseHelper moduleName}}-edit-dialog',
   standalone: true,
   imports: [
     CommonModule,
     MatDialogModule,
-    {{pascalCase singularName}}FormComponent,
+    {{pascalCaseHelper singularName}}FormComponent,
     MatButtonModule,
     MatIconModule,
   ],
@@ -36,7 +36,7 @@ export interface {{pascalCase singularName}}EditDialogData {
             <mat-icon>edit</mat-icon>
           </div>
           <div>
-            <h2 class="tremor-dialog-title">Edit {{pascalCase singularName}}</h2>
+            <h2 class="tremor-dialog-title">Edit {{pascalCaseHelper singularName}}</h2>
             <p class="tremor-dialog-subtitle">Update {{lowercase singularName}} information</p>
           </div>
         </div>
@@ -52,13 +52,13 @@ export interface {{pascalCase singularName}}EditDialogData {
 
       <!-- Content -->
       <mat-dialog-content class="tremor-dialog-content">
-        <app-{{kebabCase moduleName}}-form
+        <app-{{kebabCaseHelper moduleName}}-form
           mode="edit"
-          [initialData]="data.{{camelCase moduleName}}"
+          [initialData]="data.{{camelCaseHelper moduleName}}"
           [loading]="loading()"
           (formSubmit)="onFormSubmit($event)"
           (formCancel)="onCancel()"
-        ></app-{{kebabCase moduleName}}-form>
+        ></app-{{kebabCaseHelper moduleName}}-form>
       </mat-dialog-content>
     </div>
   `,
@@ -160,11 +160,11 @@ export interface {{pascalCase singularName}}EditDialogData {
     `,
   ],
 })
-export class {{pascalCase singularName}}EditDialogComponent implements OnInit {
-  private {{camelCase moduleName}}Service = inject({{pascalCase singularName}}Service);
+export class {{pascalCaseHelper singularName}}EditDialogComponent implements OnInit {
+  private {{camelCaseHelper moduleName}}Service = inject({{pascalCaseHelper singularName}}Service);
   private snackBar = inject(MatSnackBar);
-  private dialogRef = inject(MatDialogRef<{{pascalCase singularName}}EditDialogComponent>);
-  public data = inject<{{pascalCase singularName}}EditDialogData>(MAT_DIALOG_DATA);
+  private dialogRef = inject(MatDialogRef<{{pascalCaseHelper singularName}}EditDialogComponent>);
+  public data = inject<{{pascalCaseHelper singularName}}EditDialogData>(MAT_DIALOG_DATA);
 
   loading = signal<boolean>(false);
 
@@ -172,18 +172,18 @@ export class {{pascalCase singularName}}EditDialogComponent implements OnInit {
     // No additional setup needed since shared form handles data population
   }
 
-  async onFormSubmit(formData: {{pascalCase singularName}}FormData) {
+  async onFormSubmit(formData: {{pascalCaseHelper singularName}}FormData) {
     this.loading.set(true);
 
     try {
-      const updateRequest = formData as Update{{pascalCase singularName}}Request;
-      const result = await this.{{camelCase moduleName}}Service.update{{pascalCase singularName}}(
-        this.data.{{camelCase moduleName}}.id,
+      const updateRequest = formData as Update{{pascalCaseHelper singularName}}Request;
+      const result = await this.{{camelCaseHelper moduleName}}Service.update{{pascalCaseHelper singularName}}(
+        this.data.{{camelCaseHelper moduleName}}.id,
         updateRequest,
       );
 
       if (result) {
-        this.snackBar.open('{{pascalCase singularName}} updated successfully', 'Close', {
+        this.snackBar.open('{{pascalCaseHelper singularName}} updated successfully', 'Close', {
           duration: 3000,
         });
         this.dialogRef.close(result);
@@ -193,7 +193,7 @@ export class {{pascalCase singularName}}EditDialogComponent implements OnInit {
         });
       }
     } catch (error: any) {
-      const errorMessage = this.{{camelCase moduleName}}Service.permissionError()
+      const errorMessage = this.{{camelCaseHelper moduleName}}Service.permissionError()
         ? 'You do not have permission to update {{lowercase singularName}}'
         : error?.message || 'Failed to update {{lowercase singularName}}';
       this.snackBar.open(errorMessage, 'Close', {

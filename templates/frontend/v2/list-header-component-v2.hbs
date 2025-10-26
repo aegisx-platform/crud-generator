@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
-  selector: 'app-{{kebabCase moduleName}}-list-header',
+  selector: 'app-{{kebabCaseHelper moduleName}}-list-header',
   standalone: true,
   imports: [CommonModule, MatIconModule, MatButtonModule],
   template: `
@@ -12,18 +12,30 @@ import { MatIconModule } from '@angular/material/icon';
     <div class="flex items-start justify-between mt-4">
       <div class="flex-1">
         <div class="flex items-center gap-3">
-          <h1 class="text-2xl font-semibold text-gray-900">{{pascalCase moduleName}}</h1>
+          <h1 class="text-2xl font-semibold text-gray-900">{{pascalCaseHelper moduleName}}</h1>
         </div>
         <p class="text-sm text-gray-600">Manage your {{lowercase singularName}} collection</p>
       </div>
-      <button
-        (click)="createClicked.emit()"
-        [disabled]="loading || hasError"
-        class="px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-2"
-      >
-        <mat-icon class="!text-lg !w-5 !h-5">add</mat-icon>
-        Add {{lowercase singularName}}
-      </button>
+      <div class="flex items-center gap-2">
+{{#if withImport}}
+        <button
+          (click)="importClicked.emit()"
+          [disabled]="loading || hasError"
+          class="px-4 py-2.5 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-2"
+        >
+          <mat-icon class="!text-lg !w-5 !h-5">upload_file</mat-icon>
+          Import
+        </button>
+{{/if}}
+        <button
+          (click)="createClicked.emit()"
+          [disabled]="loading || hasError"
+          class="px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center gap-2"
+        >
+          <mat-icon class="!text-lg !w-5 !h-5">add</mat-icon>
+          Add {{lowercase singularName}}
+        </button>
+      </div>
     </div>
 
     <!-- Permission Error -->
@@ -56,7 +68,7 @@ import { MatIconModule } from '@angular/material/icon';
       <div
         class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-2 mb-4"
       >
-        <!-- Total {{pascalCase moduleName}} Card -->
+        <!-- Total {{pascalCaseHelper moduleName}} Card -->
         <div class="bg-white rounded-lg border border-gray-200 p-4">
           <div class="flex items-center gap-3">
             <div
@@ -65,7 +77,7 @@ import { MatIconModule } from '@angular/material/icon';
               <mat-icon class="!w-5 !h-5 text-blue-600">library_books</mat-icon>
             </div>
             <div>
-              <div class="text-xs text-gray-500">Total {{pascalCase moduleName}}</div>
+              <div class="text-xs text-gray-500">Total {{pascalCaseHelper moduleName}}</div>
               <div class="text-xl font-bold text-gray-900">
                 \{{ stats.total }}
               </div>
@@ -134,7 +146,7 @@ import { MatIconModule } from '@angular/material/icon';
   `,
   styles: [],
 })
-export class {{pascalCase moduleName}}ListHeaderComponent {
+export class {{pascalCaseHelper moduleName}}ListHeaderComponent {
   @Input({ required: true }) stats!: {
     total: number;
     available: number;
@@ -146,6 +158,9 @@ export class {{pascalCase moduleName}}ListHeaderComponent {
   @Input() hasError = false; // General error state (from service)
 
   @Output() createClicked = new EventEmitter<void>();
+{{#if withImport}}
+  @Output() importClicked = new EventEmitter<void>();
+{{/if}}
   @Output() clearPermissionError = new EventEmitter<void>();
 
   getPercentage(count: number): number {

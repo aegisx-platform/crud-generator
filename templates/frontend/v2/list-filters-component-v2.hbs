@@ -5,10 +5,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+{{#if queryFilters.datetime}}
 import { DateRangeFilterComponent } from '../../../shared/components/date-range-filter/date-range-filter.component';
+{{/if}}
 
 @Component({
-  selector: 'app-{{kebabCase moduleName}}-list-filters',
+  selector: 'app-{{kebabCaseHelper moduleName}}-list-filters',
   standalone: true,
   imports: [
     CommonModule,
@@ -17,7 +19,7 @@ import { DateRangeFilterComponent } from '../../../shared/components/date-range-
     MatButtonModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-    DateRangeFilterComponent,
+    {{#if queryFilters.datetime}}DateRangeFilterComponent,{{/if}}
   ],
   template: `
     <!-- Filters Panel -->
@@ -266,7 +268,7 @@ import { DateRangeFilterComponent } from '../../../shared/components/date-range-
   `,
   styles: [],
 })
-export class {{pascalCase moduleName}}ListFiltersComponent {
+export class {{pascalCaseHelper moduleName}}ListFiltersComponent {
   @Input({ required: true }) activeFilterCount!: number;
   @Input() loading = false;
 

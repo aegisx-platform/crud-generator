@@ -4,6 +4,10 @@ import { {{ModuleName}}Controller } from './{{moduleName}}.controller';
 import { {{ModuleName}}Service } from './{{moduleName}}.service';
 import { {{ModuleName}}Repository } from './{{moduleName}}.repository';
 import { {{moduleName}}Routes } from './{{moduleName}}.routes';
+{{#if withImport}}
+import { {{moduleName}}ImportRoutes } from './{{moduleName}}-import.routes';
+import { {{ModuleName}}ImportService } from './{{moduleName}}-import.service';
+{{/if}}
 
 // Note: FastifyInstance eventService type is declared in websocket.plugin.ts
 
@@ -37,6 +41,12 @@ export default fp(
       (fastify as any).eventService{{/if}}
     );
     const {{moduleName}}Controller = new {{ModuleName}}Controller({{moduleName}}Service);
+    {{#if withImport}}
+    const {{moduleName}}ImportService = new {{ModuleName}}ImportService(
+      (fastify as any).knex,
+      {{moduleName}}Repository
+    );
+    {{/if}}
 
     // Optional: Decorate Fastify instance with service for cross-plugin access
     // fastify.decorate('{{moduleName}}Service', {{moduleName}}Service);
@@ -46,6 +56,14 @@ export default fp(
       controller: {{moduleName}}Controller,
       prefix: options.prefix || '/{{tableName}}'
     });
+
+    {{#if withImport}}
+    // Register import routes
+    await fastify.register({{moduleName}}ImportRoutes, {
+      controller: {{moduleName}}Controller,
+      prefix: options.prefix || '/{{tableName}}'
+    });
+    {{/if}}
 
     // Lifecycle hooks for monitoring
     fastify.addHook('onReady', async () => {

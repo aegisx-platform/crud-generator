@@ -2,6 +2,20 @@
 
 Professional CRUD Generator for AegisX Platform with interactive CLI and flexible template system.
 
+## 🎉 v2.0.1 Release Highlights
+
+**Import Dialog Type Alignment Fix** - Critical fix for modules using `--with-import`:
+
+- ✅ Fixed ImportJob interface to match BaseImportService API responses
+- ✅ Corrected progress tracking (direct number 0-100, not nested object)
+- ✅ Simplified summary properties (flat structure: `successCount`, `failedCount`)
+- ✅ Fixed error handling (single `error` string instead of array)
+- ✅ Removed unsupported 'partial' status
+
+**Migration**: Regenerate any modules using `--with-import` flag to get updated templates.
+
+See [CHANGELOG](../../docs/crud-generator/CHANGELOG.md) for complete details.
+
 ## ✨ Features
 
 - 🎯 **Interactive Mode** - Step-by-step wizard for easy code generation
@@ -9,7 +23,8 @@ Professional CRUD Generator for AegisX Platform with interactive CLI and flexibl
 - 🛠️ **Template Management** - CLI commands to manage and customize templates
 - ⚙️ **Configuration** - Project-level preferences with `.crudgen.json`
 - 📦 **Multi-Package** - Standard, Enterprise, and Full feature packages
-- ⚡ **WebSocket Events** - Real-time CRUD operations support
+- ⚡ **WebSocket Events** - Real-time CRUD operations support (`--with-events`)
+- 📥 **Bulk Import** - Excel/CSV import with 5-step wizard (`--with-import`)
 - 🔐 **Permission System** - Auto-generate roles and permissions
 - 100% **Backward Compatible** - All existing commands still work
 
@@ -62,7 +77,12 @@ npx aegisx-crud config init
 
 For complete documentation, see:
 
-- **[Complete Documentation](./docs/README.md)** - Full user guide
+- **[Complete Documentation](../../docs/crud-generator/README.md)** - Main documentation hub
+- **[Quick Commands](../../docs/crud-generator/QUICK_COMMANDS.md)** - CLI reference
+- **[Events Guide](../../docs/crud-generator/EVENTS_GUIDE.md)** - WebSocket events (`--with-events`)
+- **[Import Guide](../../docs/crud-generator/IMPORT_GUIDE.md)** - Bulk import (`--with-import`)
+- **[CHANGELOG](../../docs/crud-generator/CHANGELOG.md)** - Version history
+- **[Local Docs](./docs/README.md)** - Library-specific documentation
 - **[Migration Guide](./docs/MIGRATION_GUIDE.md)** - Upgrading from v1.x
 - **[Template Development](./docs/TEMPLATE_DEVELOPMENT_GUIDE.md)** - Creating custom templates
 
@@ -131,4 +151,17 @@ MIT © AegisX Team
 
 ---
 
-**Need help?** Check the [complete documentation](./docs/README.md) or [template development guide](./docs/TEMPLATE_DEVELOPMENT_GUIDE.md).
+## 🔗 Quick Links
+
+- **[Main Documentation Hub](../../docs/crud-generator/README.md)** - Start here for all guides
+- **[Quick Commands Reference](../../docs/crud-generator/QUICK_COMMANDS.md)** - Fast CLI lookup
+- **[Events Guide](../../docs/crud-generator/EVENTS_GUIDE.md)** - Real-time WebSocket events
+- **[Import Guide](../../docs/crud-generator/IMPORT_GUIDE.md)** - Bulk Excel/CSV import
+- **[CHANGELOG](../../docs/crud-generator/CHANGELOG.md)** - What's new in v2.0.1
+
+**Need help?** Check the [complete documentation](../../docs/crud-generator/README.md) or [template development guide](./docs/TEMPLATE_DEVELOPMENT_GUIDE.md).
+
+---
+
+**Version:** 2.0.1
+**Last Updated:** 2025-10-26

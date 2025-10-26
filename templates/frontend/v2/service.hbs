@@ -11,7 +11,11 @@ import {
   List{{PascalCase}}Query,
   ApiResponse,
   BulkResponse,
-  PaginatedResponse
+  PaginatedResponse,
+  ImportOptions,
+  ValidateImportResponse,
+  ExecuteImportRequest,
+  ImportJob,
 } from '../types/{{typesFileName}}';
 
 // ===== SERVICE CONFIGURATION =====
@@ -27,7 +31,7 @@ export class {{PascalCase}}Service {
 
   // ===== SIGNALS FOR STATE MANAGEMENT =====
 
-  private {{camelCase moduleName}}ListSignal = signal<{{PascalCase}}[]>([]);
+  private {{camelCaseHelper moduleName}}ListSignal = signal<{{PascalCase}}[]>([]);
   private loadingSignal = signal<boolean>(false);
   private errorSignal = signal<string | null>(null);
   private permissionErrorSignal = signal<boolean>(false);
@@ -39,7 +43,7 @@ export class {{PascalCase}}Service {
 
   // ===== PUBLIC READONLY SIGNALS =====
 
-  readonly {{camelCase moduleName}}List = this.{{camelCase moduleName}}ListSignal.asReadonly();
+  readonly {{camelCaseHelper moduleName}}List = this.{{camelCaseHelper moduleName}}ListSignal.asReadonly();
   readonly loading = this.loadingSignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
   readonly permissionError = this.permissionErrorSignal.asReadonly();
@@ -95,7 +99,7 @@ export class {{PascalCase}}Service {
   // ===== STANDARD CRUD OPERATIONS =====
 
   /**
-   * Load {{camelCase moduleName}} list with pagination and filters
+   * Load {{camelCaseHelper moduleName}} list with pagination and filters
    */
   async load{{PascalCase}}List(params?: List{{PascalCase}}Query): Promise<void> {
     this.loadingSignal.set(true);
@@ -146,7 +150,7 @@ export class {{PascalCase}}Service {
         .toPromise();
 
       if (response) {
-        this.{{camelCase moduleName}}ListSignal.set(response.data);
+        this.{{camelCaseHelper moduleName}}ListSignal.set(response.data);
 
         if (response.pagination) {
           this.total{{PascalCase}}Signal.set(response.pagination.total);
@@ -155,16 +159,16 @@ export class {{PascalCase}}Service {
         }
       }
     } catch (error: any) {
-      this.handleError(error, 'Failed to load {{camelCase moduleName}} list');
+      this.handleError(error, 'Failed to load {{camelCaseHelper moduleName}} list');
     } finally {
       this.loadingSignal.set(false);
     }
   }
 
   /**
-   * Load single {{camelCase moduleName}} by ID
+   * Load single {{camelCaseHelper moduleName}} by ID
    */
-  async load{{PascalCase}}ById(id: string): Promise<{{PascalCase}} | null> {
+  async load{{PascalCase}}ById(id: {{#each columns}}{{#if isPrimaryKey}}{{tsType}}{{/if}}{{/each}}): Promise<{{PascalCase}} | null> {
     this.loadingSignal.set(true);
 
     try {
@@ -178,7 +182,7 @@ export class {{PascalCase}}Service {
       }
       return null;
     } catch (error: any) {
-      this.handleError(error, 'Failed to load {{camelCase moduleName}}');
+      this.handleError(error, 'Failed to load {{camelCaseHelper moduleName}}');
       return null;
     } finally {
       this.loadingSignal.set(false);
@@ -186,7 +190,7 @@ export class {{PascalCase}}Service {
   }
 
   /**
-   * Create new {{camelCase moduleName}}
+   * Create new {{camelCaseHelper moduleName}}
    */
   async create{{PascalCase}}(data: Create{{PascalCase}}Request): Promise<{{PascalCase}} | null> {
     this.loadingSignal.set(true);
@@ -198,13 +202,13 @@ export class {{PascalCase}}Service {
 
       if (response) {
         // Optimistic update: add to list
-        this.{{camelCase moduleName}}ListSignal.update((list) => [...list, response.data!]);
+        this.{{camelCaseHelper moduleName}}ListSignal.update((list) => [...list, response.data!]);
         this.total{{PascalCase}}Signal.update(total => total + 1);
         return response.data;
       }
       return null;
     } catch (error: any) {
-      this.handleError(error, 'Failed to create {{camelCase moduleName}}');
+      this.handleError(error, 'Failed to create {{camelCaseHelper moduleName}}');
       throw error;
     } finally {
       this.loadingSignal.set(false);
@@ -212,9 +216,9 @@ export class {{PascalCase}}Service {
   }
 
   /**
-   * Update existing {{camelCase moduleName}}
+   * Update existing {{camelCaseHelper moduleName}}
    */
-  async update{{PascalCase}}(id: string, data: Update{{PascalCase}}Request): Promise<{{PascalCase}} | null> {
+  async update{{PascalCase}}(id: {{#each columns}}{{#if isPrimaryKey}}{{tsType}}{{/if}}{{/each}}, data: Update{{PascalCase}}Request): Promise<{{PascalCase}} | null> {
     this.loadingSignal.set(true);
 
     try {
@@ -224,10 +228,10 @@ export class {{PascalCase}}Service {
 
       if (response) {
         // Optimistic update: replace in list
-        this.{{camelCase moduleName}}ListSignal.update((list) =>
+        this.{{camelCaseHelper moduleName}}ListSignal.update((list) =>
           list.map((item) => (item.id === id ? response.data! : item))
         );
-        // Update selected {{camelCase moduleName}} if it's the same
+        // Update selected {{camelCaseHelper moduleName}} if it's the same
         if (this.selected{{PascalCase}}Signal()?.id === id) {
           this.selected{{PascalCase}}Signal.set(response.data);
         }
@@ -235,7 +239,7 @@ export class {{PascalCase}}Service {
       }
       return null;
     } catch (error: any) {
-      this.handleError(error, 'Failed to update {{camelCase moduleName}}');
+      this.handleError(error, 'Failed to update {{camelCaseHelper moduleName}}');
       throw error;
     } finally {
       this.loadingSignal.set(false);
@@ -243,9 +247,9 @@ export class {{PascalCase}}Service {
   }
 
   /**
-   * Delete {{camelCase moduleName}} by ID
+   * Delete {{camelCaseHelper moduleName}} by ID
    */
-  async delete{{PascalCase}}(id: string): Promise<boolean> {
+  async delete{{PascalCase}}(id: {{#each columns}}{{#if isPrimaryKey}}{{tsType}}{{/if}}{{/each}}): Promise<boolean> {
     this.loadingSignal.set(true);
 
     try {
@@ -255,11 +259,11 @@ export class {{PascalCase}}Service {
 
       if (response?.success) {
         // Optimistic update: remove from list
-        this.{{camelCase moduleName}}ListSignal.update((list) =>
+        this.{{camelCaseHelper moduleName}}ListSignal.update((list) =>
           list.filter((item) => item.id !== id)
         );
         this.total{{PascalCase}}Signal.update(total => Math.max(0, total - 1));
-        // Clear selected {{camelCase moduleName}} if it's the deleted one
+        // Clear selected {{camelCaseHelper moduleName}} if it's the deleted one
         if (this.selected{{PascalCase}}Signal()?.id === id) {
           this.selected{{PascalCase}}Signal.set(null);
         }
@@ -267,7 +271,7 @@ export class {{PascalCase}}Service {
       }
       return false;
     } catch (error: any) {
-      this.handleError(error, 'Failed to delete {{camelCase moduleName}}');
+      this.handleError(error, 'Failed to delete {{camelCaseHelper moduleName}}');
       throw error;
     } finally {
       this.loadingSignal.set(false);
@@ -278,11 +282,11 @@ export class {{PascalCase}}Service {
   // ===== ENHANCED OPERATIONS =====
 
   /**
-   * Export {{camelCase moduleName}} data
+   * Export {{camelCaseHelper moduleName}} data
    */
   async export{{PascalCase}}(options: {
     format: 'csv' | 'excel' | 'pdf';
-    ids?: string[];
+    ids?: {{#each columns}}{{#if isPrimaryKey}}{{tsType}}{{/if}}{{/each}}[];
     filters?: Record<string, any>;
     fields?: string[];
     filename?: string;
@@ -338,13 +342,13 @@ export class {{PascalCase}}Service {
 
       throw new Error('Export failed - no response received');
     } catch (error: any) {
-      console.error('Failed to export {{camelCase moduleName}} data:', error);
+      console.error('Failed to export {{camelCaseHelper moduleName}} data:', error);
       throw error;
     }
   }
 
   /**
-   * Get dropdown options for {{camelCase moduleName}}
+   * Get dropdown options for {{camelCaseHelper moduleName}}
    */
   async getDropdownOptions(params: {search?: string, limit?: number} = {}): Promise<Array<{value: string, label: string}>> {
     try {
@@ -361,7 +365,7 @@ export class {{PascalCase}}Service {
       }
       return [];
     } catch (error: any) {
-      console.error('Failed to fetch {{camelCase moduleName}} dropdown options:', error);
+      console.error('Failed to fetch {{camelCaseHelper moduleName}} dropdown options:', error);
       return [];
     }
   }
@@ -370,7 +374,7 @@ export class {{PascalCase}}Service {
   /**
    * Get {{referencedTable}} dropdown options for {{field}} field
    */
-  async get{{pascalCase referencedTable}}Dropdown(params: {search?: string, limit?: number} = {}): Promise<Array<{value: string, label: string, disabled?: boolean}>> {
+  async get{{pascalCaseHelper referencedTable}}Dropdown(params: {search?: string, limit?: number} = {}): Promise<Array<{value: string, label: string, disabled?: boolean}>> {
     try {
       let httpParams = new HttpParams();
       if (params.search) httpParams = httpParams.set('search', params.search);
@@ -393,7 +397,7 @@ export class {{PascalCase}}Service {
   {{/each}}
 
   /**
-   * Bulk create {{camelCase moduleName}}s
+   * Bulk create {{camelCaseHelper moduleName}}s
    */
   async bulkCreate{{PascalCase}}(items: Create{{PascalCase}}Request[]): Promise<BulkResponse | null> {
     this.loadingSignal.set(true);
@@ -410,7 +414,7 @@ export class {{PascalCase}}Service {
       }
       return null;
     } catch (error: any) {
-      this.handleError(error, 'Failed to bulk create {{camelCase moduleName}}s');
+      this.handleError(error, 'Failed to bulk create {{camelCaseHelper moduleName}}s');
       throw error;
     } finally {
       this.loadingSignal.set(false);
@@ -418,9 +422,9 @@ export class {{PascalCase}}Service {
   }
 
   /**
-   * Bulk update {{camelCase moduleName}}s
+   * Bulk update {{camelCaseHelper moduleName}}s
    */
-  async bulkUpdate{{PascalCase}}(items: Array<{ id: string, data: Update{{PascalCase}}Request }>): Promise<BulkResponse | null> {
+  async bulkUpdate{{PascalCase}}(items: Array<{ id: {{#each columns}}{{#if isPrimaryKey}}{{tsType}}{{/if}}{{/each}}, data: Update{{PascalCase}}Request }>): Promise<BulkResponse | null> {
     this.loadingSignal.set(true);
 
     try {
@@ -435,7 +439,7 @@ export class {{PascalCase}}Service {
       }
       return null;
     } catch (error: any) {
-      this.handleError(error, 'Failed to bulk update {{camelCase moduleName}}s');
+      this.handleError(error, 'Failed to bulk update {{camelCaseHelper moduleName}}s');
       throw error;
     } finally {
       this.loadingSignal.set(false);
@@ -443,9 +447,9 @@ export class {{PascalCase}}Service {
   }
 
   /**
-   * Bulk delete {{camelCase moduleName}}s
+   * Bulk delete {{camelCaseHelper moduleName}}s
    */
-  async bulkDelete{{PascalCase}}(ids: string[]): Promise<BulkResponse | null> {
+  async bulkDelete{{PascalCase}}(ids: {{#each columns}}{{#if isPrimaryKey}}{{tsType}}{{/if}}{{/each}}[]): Promise<BulkResponse | null> {
     this.loadingSignal.set(true);
 
     try {
@@ -460,7 +464,7 @@ export class {{PascalCase}}Service {
       }
       return null;
     } catch (error: any) {
-      this.handleError(error, 'Failed to bulk delete {{camelCase moduleName}}s');
+      this.handleError(error, 'Failed to bulk delete {{camelCaseHelper moduleName}}s');
       throw error;
     } finally {
       this.loadingSignal.set(false);
@@ -472,7 +476,7 @@ export class {{PascalCase}}Service {
   // ===== ADVANCED OPERATIONS (FULL PACKAGE) =====
 
   /**
-   * Validate {{camelCase moduleName}} data before save
+   * Validate {{camelCaseHelper moduleName}} data before save
    */
   async validate{{PascalCase}}(data: Create{{PascalCase}}Request): Promise<{valid: boolean, errors?: any[]}> {
     try {
@@ -485,7 +489,7 @@ export class {{PascalCase}}Service {
       }
       return { valid: false, errors: ['Validation failed'] };
     } catch (error: any) {
-      console.error('Failed to validate {{camelCase moduleName}}:', error);
+      console.error('Failed to validate {{camelCaseHelper moduleName}}:', error);
       return { valid: false, errors: [error.message || 'Validation error'] };
     }
   }
@@ -493,7 +497,7 @@ export class {{PascalCase}}Service {
   /**
    * Check field uniqueness
    */
-  async checkUniqueness(field: string, value: string, excludeId?: string): Promise<{unique: boolean}> {
+  async checkUniqueness(field: string, value: string, excludeId?: {{#each columns}}{{#if isPrimaryKey}}{{tsType}}{{/if}}{{/each}}): Promise<{unique: boolean}> {
     try {
       let params = new HttpParams()
         .set('value', value);
@@ -517,7 +521,7 @@ export class {{PascalCase}}Service {
   }
 
   /**
-   * Get {{camelCase moduleName}} statistics
+   * Get {{camelCaseHelper moduleName}} statistics
    */
   async getStats(): Promise<{total: number} | null> {
     try {
@@ -530,11 +534,110 @@ export class {{PascalCase}}Service {
       }
       return null;
     } catch (error: any) {
-      console.error('Failed to get {{camelCase moduleName}} stats:', error);
+      console.error('Failed to get {{camelCaseHelper moduleName}} stats:', error);
       return null;
     }
   }
 {{/if}}
+
+  // ===== BULK IMPORT OPERATIONS =====
+
+  /**
+   * Download import template
+   */
+  downloadImportTemplate(
+    format: 'csv' | 'excel' = 'excel',
+    includeExample: boolean = true,
+  ): Observable<Blob> {
+    const httpParams = new HttpParams()
+      .set('format', format)
+      .set('includeExample', includeExample.toString());
+
+    return this.http.get(`${this.baseUrl}/import/template`, {
+      params: httpParams,
+      responseType: 'blob',
+    });
+  }
+
+  /**
+   * Validate import file
+   */
+  async validateImportFile(
+    file: File,
+    options?: ImportOptions,
+  ): Promise<ApiResponse<ValidateImportResponse> | null> {
+    this.loadingSignal.set(true);
+    this.errorSignal.set(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      if (options) {
+        formData.append('options', JSON.stringify(options));
+      }
+
+      const response = await this.http
+        .post<
+          ApiResponse<ValidateImportResponse>
+        >(`${this.baseUrl}/import/validate`, formData)
+        .toPromise();
+
+      return response || null;
+    } catch (error: any) {
+      this.handleError(error, 'Failed to validate import file');
+      throw error;
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
+  /**
+   * Execute import with validated session
+   */
+  async executeImport(
+    sessionId: string,
+    options?: ImportOptions,
+  ): Promise<ApiResponse<ImportJob> | null> {
+    this.loadingSignal.set(true);
+    this.errorSignal.set(null);
+
+    try {
+      const requestBody: ExecuteImportRequest = {
+        sessionId,
+        options,
+      };
+
+      const response = await this.http
+        .post<
+          ApiResponse<ImportJob>
+        >(`${this.baseUrl}/import/execute`, requestBody)
+        .toPromise();
+
+      return response || null;
+    } catch (error: any) {
+      this.handleError(error, 'Failed to execute import');
+      throw error;
+    } finally {
+      this.loadingSignal.set(false);
+    }
+  }
+
+  /**
+   * Get import job status
+   */
+  async getImportStatus(jobId: string): Promise<ApiResponse<ImportJob> | null> {
+    try {
+      const response = await this.http
+        .get<ApiResponse<ImportJob>>(`${this.baseUrl}/import/status/${jobId}`)
+        .toPromise();
+
+      return response || null;
+    } catch (error: any) {
+      console.error('Failed to get import status:', error);
+      throw error;
+    }
+  }
 
   // ===== UTILITY METHODS =====
 
@@ -554,10 +657,10 @@ export class {{PascalCase}}Service {
   }
 
   /**
-   * Select {{camelCase moduleName}}
+   * Select {{camelCaseHelper moduleName}}
    */
-  select{{PascalCase}}({{camelCase moduleName}}: {{PascalCase}} | null): void {
-    this.selected{{PascalCase}}Signal.set({{camelCase moduleName}});
+  select{{PascalCase}}({{camelCaseHelper moduleName}}: {{PascalCase}} | null): void {
+    this.selected{{PascalCase}}Signal.set({{camelCaseHelper moduleName}});
   }
 
   /**
@@ -572,7 +675,7 @@ export class {{PascalCase}}Service {
    * Reset service state
    */
   reset(): void {
-    this.{{camelCase moduleName}}ListSignal.set([]);
+    this.{{camelCaseHelper moduleName}}ListSignal.set([]);
     this.selected{{PascalCase}}Signal.set(null);
     this.currentPageSignal.set(1);
     this.errorSignal.set(null);

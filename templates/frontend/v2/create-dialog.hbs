@@ -3,12 +3,12 @@ import { CommonModule } from '@angular/common';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
-import { {{PascalCase}}Service } from '../services/{{kebabCase moduleName}}.service';
+import { {{PascalCase}}Service } from '../services/{{kebabCaseHelper moduleName}}.service';
 import { Create{{PascalCase}}Request } from '../types/{{typesFileName}}';
-import { {{PascalCase}}FormComponent, {{PascalCase}}FormData } from './{{kebabCase moduleName}}-form.component';
+import { {{PascalCase}}FormComponent, {{PascalCase}}FormData } from './{{kebabCaseHelper moduleName}}-form.component';
 
 @Component({
-  selector: 'app-{{kebabCase moduleName}}-create-dialog',
+  selector: 'app-{{kebabCaseHelper moduleName}}-create-dialog',
   standalone: true,
   imports: [
     CommonModule,
@@ -20,12 +20,12 @@ import { {{PascalCase}}FormComponent, {{PascalCase}}FormData } from './{{kebabCa
       <h2 mat-dialog-title>Create {{title}}</h2>
       
       <mat-dialog-content>
-        <app-{{kebabCase moduleName}}-form
+        <app-{{kebabCaseHelper moduleName}}-form
           mode="create"
           [loading]="loading()"
           (formSubmit)="onFormSubmit($event)"
           (formCancel)="onCancel()"
-        ></app-{{kebabCase moduleName}}-form>
+        ></app-{{kebabCaseHelper moduleName}}-form>
       </mat-dialog-content>
     </div>
   `,
@@ -48,7 +48,7 @@ import { {{PascalCase}}FormComponent, {{PascalCase}}FormData } from './{{kebabCa
   `]
 })
 export class {{PascalCase}}CreateDialogComponent {
-  private {{camelCase moduleName}}Service = inject({{PascalCase}}Service);
+  private {{camelCaseHelper moduleName}}Service = inject({{PascalCase}}Service);
   private snackBar = inject(MatSnackBar);
   private dialogRef = inject(MatDialogRef<{{PascalCase}}CreateDialogComponent>);
 
@@ -59,7 +59,7 @@ export class {{PascalCase}}CreateDialogComponent {
     
     try {
       const createRequest = formData as Create{{PascalCase}}Request;
-      const result = await this.{{camelCase moduleName}}Service.create{{PascalCase}}(createRequest);
+      const result = await this.{{camelCaseHelper moduleName}}Service.create{{PascalCase}}(createRequest);
       
       if (result) {
         this.snackBar.open('{{title}} created successfully', 'Close', {
@@ -72,7 +72,7 @@ export class {{PascalCase}}CreateDialogComponent {
         });
       }
     } catch (error: any) {
-      const errorMessage = this.{{camelCase moduleName}}Service.permissionError()
+      const errorMessage = this.{{camelCaseHelper moduleName}}Service.permissionError()
         ? 'You do not have permission to create {{title}}'
         : error?.message || 'Failed to create {{title}}';
       this.snackBar.open(

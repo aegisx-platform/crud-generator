@@ -44,7 +44,7 @@ export interface {{PascalCase}}FormData {
 }
 
 @Component({
-  selector: 'app-{{kebabCase moduleName}}-form',
+  selector: 'app-{{kebabCaseHelper moduleName}}-form',
   standalone: true,
   imports: [
     CommonModule,
@@ -688,7 +688,7 @@ export class {{PascalCase}}FormComponent implements OnInit, OnChanges {
     }
   }
 
-  private populateForm({{camelCase moduleName}}: {{PascalCase}}) {
+  private populateForm({{camelCaseHelper moduleName}}: {{PascalCase}}) {
     const formValue = {
       {{#each formFields}}
       {{#if (eq type 'json')}}

@@ -5,17 +5,17 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
-import { {{pascalCase singularName}}Service } from '../services/{{kebabCase moduleName}}.service';
-import { Create{{pascalCase singularName}}Request } from '../types/{{kebabCase moduleName}}.types';
-import { {{pascalCase singularName}}FormComponent, {{pascalCase singularName}}FormData } from './{{kebabCase moduleName}}-form.component';
+import { {{pascalCaseHelper singularName}}Service } from '../services/{{kebabCaseHelper moduleName}}.service';
+import { Create{{pascalCaseHelper singularName}}Request } from '../types/{{kebabCaseHelper moduleName}}.types';
+import { {{pascalCaseHelper singularName}}FormComponent, {{pascalCaseHelper singularName}}FormData } from './{{kebabCaseHelper moduleName}}-form.component';
 
 @Component({
-  selector: 'app-{{kebabCase moduleName}}-create-dialog',
+  selector: 'app-{{kebabCaseHelper moduleName}}-create-dialog',
   standalone: true,
   imports: [
     CommonModule,
     MatDialogModule,
-    {{pascalCase singularName}}FormComponent,
+    {{pascalCaseHelper singularName}}FormComponent,
     MatButtonModule,
     MatIconModule,
   ],
@@ -28,7 +28,7 @@ import { {{pascalCase singularName}}FormComponent, {{pascalCase singularName}}Fo
             <mat-icon>add_circle</mat-icon>
           </div>
           <div>
-            <h2 class="tremor-dialog-title">Create New {{pascalCase singularName}}</h2>
+            <h2 class="tremor-dialog-title">Create New {{pascalCaseHelper singularName}}</h2>
             <p class="tremor-dialog-subtitle">
               Add a new {{lowercase singularName}} to your collection
             </p>
@@ -46,12 +46,12 @@ import { {{pascalCase singularName}}FormComponent, {{pascalCase singularName}}Fo
 
       <!-- Content -->
       <mat-dialog-content class="tremor-dialog-content">
-        <app-{{kebabCase moduleName}}-form
+        <app-{{kebabCaseHelper moduleName}}-form
           mode="create"
           [loading]="loading()"
           (formSubmit)="onFormSubmit($event)"
           (formCancel)="onCancel()"
-        ></app-{{kebabCase moduleName}}-form>
+        ></app-{{kebabCaseHelper moduleName}}-form>
       </mat-dialog-content>
     </div>
   `,
@@ -153,22 +153,22 @@ import { {{pascalCase singularName}}FormComponent, {{pascalCase singularName}}Fo
     `,
   ],
 })
-export class {{pascalCase singularName}}CreateDialogComponent {
-  private {{camelCase moduleName}}Service = inject({{pascalCase singularName}}Service);
+export class {{pascalCaseHelper singularName}}CreateDialogComponent {
+  private {{camelCaseHelper moduleName}}Service = inject({{pascalCaseHelper singularName}}Service);
   private snackBar = inject(MatSnackBar);
-  private dialogRef = inject(MatDialogRef<{{pascalCase singularName}}CreateDialogComponent>);
+  private dialogRef = inject(MatDialogRef<{{pascalCaseHelper singularName}}CreateDialogComponent>);
 
   loading = signal<boolean>(false);
 
-  async onFormSubmit(formData: {{pascalCase singularName}}FormData) {
+  async onFormSubmit(formData: {{pascalCaseHelper singularName}}FormData) {
     this.loading.set(true);
 
     try {
-      const createRequest = formData as Create{{pascalCase singularName}}Request;
-      const result = await this.{{camelCase moduleName}}Service.create{{pascalCase singularName}}(createRequest);
+      const createRequest = formData as Create{{pascalCaseHelper singularName}}Request;
+      const result = await this.{{camelCaseHelper moduleName}}Service.create{{pascalCaseHelper singularName}}(createRequest);
 
       if (result) {
-        this.snackBar.open('{{pascalCase singularName}} created successfully', 'Close', {
+        this.snackBar.open('{{pascalCaseHelper singularName}} created successfully', 'Close', {
           duration: 3000,
         });
         this.dialogRef.close(result);
@@ -178,7 +178,7 @@ export class {{pascalCase singularName}}CreateDialogComponent {
         });
       }
     } catch (error: any) {
-      const errorMessage = this.{{camelCase moduleName}}Service.permissionError()
+      const errorMessage = this.{{camelCaseHelper moduleName}}Service.permissionError()
         ? 'You do not have permission to create {{lowercase singularName}}'
         : error?.message || 'Failed to create {{lowercase singularName}}';
       this.snackBar.open(errorMessage, 'Close', {

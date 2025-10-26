@@ -52,21 +52,24 @@ import {
   ExportService,
   SharedExportComponent,
 } from '../../../shared/components/shared-export/shared-export.component';
-import { {{pascalCase singularName}}Service } from '../services/{{lowercase moduleName}}.service';
-import { {{pascalCase singularName}}, List{{pascalCase singularName}}Query } from '../types/{{lowercase moduleName}}.types';
-import { {{pascalCase singularName}}CreateDialogComponent } from './{{lowercase moduleName}}-create.dialog';
+import { {{pascalCaseHelper singularName}}Service } from '../services/{{lowercase moduleName}}.service';
+import { {{pascalCaseHelper singularName}}, List{{pascalCaseHelper singularName}}Query } from '../types/{{lowercase moduleName}}.types';
+import { {{pascalCaseHelper singularName}}CreateDialogComponent } from './{{lowercase moduleName}}-create.dialog';
 import {
-  {{pascalCase singularName}}EditDialogComponent,
-  {{pascalCase singularName}}EditDialogData,
+  {{pascalCaseHelper singularName}}EditDialogComponent,
+  {{pascalCaseHelper singularName}}EditDialogData,
 } from './{{lowercase moduleName}}-edit.dialog';
 import {
-  {{pascalCase singularName}}ViewDialogComponent,
-  {{pascalCase singularName}}ViewDialogData,
+  {{pascalCaseHelper singularName}}ViewDialogComponent,
+  {{pascalCaseHelper singularName}}ViewDialogData,
 } from './{{lowercase moduleName}}-view.dialog';
+{{#if withImport}}
+import { {{pascalCaseHelper singularName}}ImportDialogComponent } from './{{lowercase moduleName}}-import.dialog';
+{{/if}}
 
 // Import child components
-import { {{pascalCase moduleName}}ListFiltersComponent } from './{{lowercase moduleName}}-list-filters.component';
-import { {{pascalCase moduleName}}ListHeaderComponent } from './{{lowercase moduleName}}-list-header.component';
+import { {{pascalCaseHelper moduleName}}ListFiltersComponent } from './{{lowercase moduleName}}-list-filters.component';
+import { {{pascalCaseHelper moduleName}}ListHeaderComponent } from './{{lowercase moduleName}}-list-header.component';
 
 @Component({
   selector: 'app-{{lowercase moduleName}}-list',
@@ -87,8 +90,8 @@ import { {{pascalCase moduleName}}ListHeaderComponent } from './{{lowercase modu
     SharedExportComponent,
     BreadcrumbComponent,
     // Child components
-    {{pascalCase moduleName}}ListHeaderComponent,
-    {{pascalCase moduleName}}ListFiltersComponent,
+    {{pascalCaseHelper moduleName}}ListHeaderComponent,
+    {{pascalCaseHelper moduleName}}ListFiltersComponent,
     // AegisX UI components
     AegisxEmptyStateComponent,
     AegisxErrorStateComponent,
@@ -106,8 +109,8 @@ import { {{pascalCase moduleName}}ListHeaderComponent } from './{{lowercase modu
     ]),
   ],
 })
-export class {{pascalCase moduleName}}ListComponent {
-  {{camelCase moduleName}}Service = inject({{pascalCase singularName}}Service);
+export class {{pascalCaseHelper moduleName}}ListComponent {
+  {{camelCaseHelper moduleName}}Service = inject({{pascalCaseHelper singularName}}Service);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private axDialog = inject(AxDialogService);
@@ -124,7 +127,7 @@ export class {{pascalCase moduleName}}ListComponent {
     },
     {
       id: '{{lowercase moduleName}}',
-      title: '{{pascalCase moduleName}}',
+      title: '{{pascalCaseHelper moduleName}}',
       type: 'basic',
       icon: 'menu_book',
     },
@@ -138,14 +141,14 @@ export class {{pascalCase moduleName}}ListComponent {
 {{/each}}
     'actions',
   ];
-  dataSource = new MatTableDataSource<{{pascalCase singularName}}>([]);
-  selection = new SelectionModel<{{pascalCase singularName}}>(true, []);
+  dataSource = new MatTableDataSource<{{pascalCaseHelper singularName}}>([]);
+  selection = new SelectionModel<{{pascalCaseHelper singularName}}>(true, []);
 
   // Selection for export feature (like authors)
-  private selectedIdsSignal = signal<Set<string>>(new Set());
+  private selectedIdsSignal = signal<Set<{{#each columns}}{{#if isPrimaryKey}}{{tsType}}{{/if}}{{/each}}>>(new Set());
   readonly selectedItems = computed(() =>
-    this.{{camelCase moduleName}}Service
-      .{{camelCase moduleName}}List()
+    this.{{camelCaseHelper moduleName}}Service
+      .{{camelCaseHelper moduleName}}List()
       .filter((item) => this.selectedIdsSignal().has(item.id)),
   );
 
@@ -261,7 +264,7 @@ export class {{pascalCase moduleName}}ListComponent {
   private loadingTimeout: any;
 
   // Expandable rows state
-  protected expanded{{pascalCase singularName}} = signal<{{pascalCase singularName}} | null>(null);
+  protected expanded{{pascalCaseHelper singularName}} = signal<{{pascalCaseHelper singularName}} | null>(null);
 
   // Computed signals
   advancedFilters = computed(() => ({
@@ -325,7 +328,7 @@ export class {{pascalCase moduleName}}ListComponent {
 
   // Stats from API (should come from dedicated stats endpoint)
   stats = computed(() => ({
-    total: this.{{camelCase moduleName}}Service.total{{pascalCase singularName}}(),
+    total: this.{{camelCaseHelper moduleName}}Service.total{{pascalCaseHelper singularName}}(),
     available: 0,
     unavailable: 0,
     recentWeek: 0,
@@ -333,7 +336,7 @@ export class {{pascalCase moduleName}}ListComponent {
 
   // Export configuration
   exportServiceAdapter: ExportService = {
-    export: (options: ExportOptions) => this.{{camelCase moduleName}}Service.export{{pascalCase singularName}}(options),
+    export: (options: ExportOptions) => this.{{camelCaseHelper moduleName}}Service.export{{pascalCaseHelper singularName}}(options),
   };
 
   availableExportFields = [
@@ -369,7 +372,7 @@ export class {{pascalCase moduleName}}ListComponent {
 
     // Track loading state and delay loading indicator
     effect(() => {
-      const loading = this.{{camelCase moduleName}}Service.loading();
+      const loading = this.{{camelCaseHelper moduleName}}Service.loading();
 
       // Clear any existing timeout
       if (this.loadingTimeout) {
@@ -420,7 +423,7 @@ export class {{pascalCase moduleName}}ListComponent {
       const {{this.name}}Max = this.{{this.name}}MaxSignal();
       {{/each}}
 
-      const params: Partial<List{{pascalCase singularName}}Query> = {
+      const params: Partial<List{{pascalCaseHelper singularName}}Query> = {
         page: (page?.index ?? 0) + 1,
         limit: page?.size ?? 25,
         sort:
@@ -458,10 +461,10 @@ export class {{pascalCase moduleName}}ListComponent {
           delete params[k as keyof typeof params],
       );
 
-      await this.{{camelCase moduleName}}Service.load{{pascalCase singularName}}List(params);
-      this.dataSource.data = this.{{camelCase moduleName}}Service.{{camelCase moduleName}}List();
+      await this.{{camelCaseHelper moduleName}}Service.load{{pascalCaseHelper singularName}}List(params);
+      this.dataSource.data = this.{{camelCaseHelper moduleName}}Service.{{camelCaseHelper moduleName}}List();
       if (this.paginator) {
-        this.paginator.length = this.{{camelCase moduleName}}Service.total{{pascalCase singularName}}();
+        this.paginator.length = this.{{camelCaseHelper moduleName}}Service.total{{pascalCaseHelper singularName}}();
       }
     });
   }
@@ -711,7 +714,7 @@ export class {{pascalCase moduleName}}ListComponent {
 
   // CRUD Operations
   openCreateDialog() {
-    const dialogRef = this.dialog.open({{pascalCase singularName}}CreateDialogComponent, {
+    const dialogRef = this.dialog.open({{pascalCaseHelper singularName}}CreateDialogComponent, {
       width: '600px',
     });
 
@@ -721,24 +724,42 @@ export class {{pascalCase moduleName}}ListComponent {
       }
     });
   }
+{{#if withImport}}
 
-  onView{{pascalCase singularName}}({{camelCase singularName}}: {{pascalCase singularName}}) {
-    const dialogRef = this.dialog.open({{pascalCase singularName}}ViewDialogComponent, {
+  openImportDialog() {
+    const dialogRef = this.dialog.open({{pascalCaseHelper singularName}}ImportDialogComponent, {
+      width: '900px',
+      maxHeight: '90vh',
+    });
+
+    dialogRef.afterClosed().subscribe((result: boolean) => {
+      if (result) {
+        this.snackBar.open('Import completed successfully', 'Close', {
+          duration: 3000,
+        });
+        this.reloadTrigger.update((n) => n + 1);
+      }
+    });
+  }
+{{/if}}
+
+  onView{{pascalCaseHelper singularName}}({{camelCaseHelper singularName}}: {{pascalCaseHelper singularName}}) {
+    const dialogRef = this.dialog.open({{pascalCaseHelper singularName}}ViewDialogComponent, {
       width: '600px',
-      data: { {{lowercase moduleName}}: {{camelCase singularName}} } as {{pascalCase singularName}}ViewDialogData,
+      data: { {{lowercase moduleName}}: {{camelCaseHelper singularName}} } as {{pascalCaseHelper singularName}}ViewDialogData,
     });
 
     dialogRef.afterClosed().subscribe((result: any) => {
       if (result?.action === 'edit') {
-        this.onEdit{{pascalCase singularName}}(result.data);
+        this.onEdit{{pascalCaseHelper singularName}}(result.data);
       }
     });
   }
 
-  onEdit{{pascalCase singularName}}({{camelCase singularName}}: {{pascalCase singularName}}) {
-    const dialogRef = this.dialog.open({{pascalCase singularName}}EditDialogComponent, {
+  onEdit{{pascalCaseHelper singularName}}({{camelCaseHelper singularName}}: {{pascalCaseHelper singularName}}) {
+    const dialogRef = this.dialog.open({{pascalCaseHelper singularName}}EditDialogComponent, {
       width: '600px',
-      data: { {{lowercase moduleName}}: {{camelCase singularName}} } as {{pascalCase singularName}}EditDialogData,
+      data: { {{lowercase moduleName}}: {{camelCaseHelper singularName}} } as {{pascalCaseHelper singularName}}EditDialogData,
     });
 
     dialogRef.afterClosed().subscribe((result: boolean) => {
@@ -748,13 +769,13 @@ export class {{pascalCase moduleName}}ListComponent {
     });
   }
 
-  onDelete{{pascalCase singularName}}({{camelCase singularName}}: {{pascalCase singularName}}) {
-    const itemName = ({{camelCase singularName}} as any).name || ({{camelCase singularName}} as any).title || '{{lowercase singularName}}';
+  onDelete{{pascalCaseHelper singularName}}({{camelCaseHelper singularName}}: {{pascalCaseHelper singularName}}) {
+    const itemName = ({{camelCaseHelper singularName}} as any).name || ({{camelCaseHelper singularName}} as any).title || '{{lowercase singularName}}';
     this.axDialog.confirmDelete(itemName).subscribe(async (confirmed) => {
       if (confirmed) {
         try {
-          await this.{{camelCase moduleName}}Service.delete{{pascalCase singularName}}({{camelCase singularName}}.id);
-          this.snackBar.open('{{pascalCase singularName}} deleted successfully', 'Close', {
+          await this.{{camelCaseHelper moduleName}}Service.delete{{pascalCaseHelper singularName}}({{camelCaseHelper singularName}}.id);
+          this.snackBar.open('{{pascalCaseHelper singularName}} deleted successfully', 'Close', {
             duration: 3000,
           });
           this.reloadTrigger.update((n) => n + 1);
@@ -774,8 +795,8 @@ export class {{pascalCase moduleName}}ListComponent {
       .subscribe(async (confirmed) => {
         if (confirmed) {
           try {
-            const deletePromises = this.selection.selected.map(({{camelCase singularName}}) =>
-              this.{{camelCase moduleName}}Service.delete{{pascalCase singularName}}({{camelCase singularName}}.id),
+            const deletePromises = this.selection.selected.map(({{camelCaseHelper singularName}}) =>
+              this.{{camelCaseHelper moduleName}}Service.delete{{pascalCaseHelper singularName}}({{camelCaseHelper singularName}}.id),
             );
 
             await Promise.all(deletePromises);
@@ -852,18 +873,18 @@ export class {{pascalCase moduleName}}ListComponent {
   }
 
   // Expandable Row Methods
-  toggleExpandRow({{camelCase singularName}}: {{pascalCase singularName}}): void {
-    const currentExpanded = this.expanded{{pascalCase singularName}}();
-    if (currentExpanded?.id === {{camelCase singularName}}.id) {
+  toggleExpandRow({{camelCaseHelper singularName}}: {{pascalCaseHelper singularName}}): void {
+    const currentExpanded = this.expanded{{pascalCaseHelper singularName}}();
+    if (currentExpanded?.id === {{camelCaseHelper singularName}}.id) {
       // Collapse currently expanded row
-      this.expanded{{pascalCase singularName}}.set(null);
+      this.expanded{{pascalCaseHelper singularName}}.set(null);
     } else {
       // Expand new row (and collapse previous if any)
-      this.expanded{{pascalCase singularName}}.set({{camelCase singularName}});
+      this.expanded{{pascalCaseHelper singularName}}.set({{camelCaseHelper singularName}});
     }
   }
 
-  isRowExpanded({{camelCase singularName}}: {{pascalCase singularName}}): boolean {
-    return this.expanded{{pascalCase singularName}}()?.id === {{camelCase singularName}}.id;
+  isRowExpanded({{camelCaseHelper singularName}}: {{pascalCaseHelper singularName}}): boolean {
+    return this.expanded{{pascalCaseHelper singularName}}()?.id === {{camelCaseHelper singularName}}.id;
   }
 }

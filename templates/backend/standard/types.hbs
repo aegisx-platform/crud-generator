@@ -60,3 +60,72 @@ export interface {{ModuleName}}Entity {
   {{name}}: {{{raw tsType}}}{{#if isNullable}} | null{{/if}};
   {{/each}}
 }
+
+// ===== ERROR HANDLING: ERROR CODES =====
+/**
+ * Error codes for {{ModuleName}} module
+ * Auto-generated based on database constraints and business rules
+ */
+export enum {{ModuleName}}ErrorCode {
+  // Standard errors
+  NOT_FOUND = '{{uppercase tableName}}_NOT_FOUND',
+  VALIDATION_ERROR = '{{uppercase tableName}}_VALIDATION_ERROR',
+
+  {{#if hasUniqueConstraints}}
+  // Duplicate errors (409 Conflict)
+  {{#each uniqueConstraints.singleField}}
+  DUPLICATE_{{uppercase this}} = '{{uppercase ../tableName}}_DUPLICATE_{{uppercase this}}',
+  {{/each}}
+  {{#each uniqueConstraints.composite}}
+  DUPLICATE_{{#each this}}{{uppercase this}}{{#unless @last}}_{{/unless}}{{/each}} = '{{uppercase ../../tableName}}_DUPLICATE_{{#each this}}{{uppercase this}}{{#unless @last}}_{{/unless}}{{/each}}',
+  {{/each}}
+  {{/if}}
+
+  {{#if hasForeignKeyReferences}}
+  // Delete validation errors (422 Unprocessable Entity)
+  CANNOT_DELETE_HAS_REFERENCES = '{{uppercase tableName}}_CANNOT_DELETE_HAS_REFERENCES',
+  {{#each foreignKeyReferences}}
+  CANNOT_DELETE_HAS_{{uppercase table}} = '{{uppercase ../tableName}}_CANNOT_DELETE_HAS_{{uppercase table}}',
+  {{/each}}
+  {{/if}}
+
+  {{#if hasBusinessRules}}
+  // Business rule validation errors (422)
+  {{#each businessRules}}
+  {{errorCode}}_{{uppercase field}} = '{{uppercase ../../tableName}}_{{errorCode}}_{{uppercase field}}',
+  {{/each}}
+  {{/if}}
+}
+
+/**
+ * Error messages mapped to error codes
+ */
+export const {{ModuleName}}ErrorMessages: Record<{{ModuleName}}ErrorCode, string> = {
+  [{{ModuleName}}ErrorCode.NOT_FOUND]: '{{ModuleName}} not found',
+  [{{ModuleName}}ErrorCode.VALIDATION_ERROR]: '{{ModuleName}} validation failed',
+
+  {{#if hasUniqueConstraints}}
+  // Duplicate error messages
+  {{#each uniqueConstraints.singleField}}
+  [{{../ModuleName}}ErrorCode.DUPLICATE_{{uppercase this}}]: '{{titleCase this}} already exists',
+  {{/each}}
+  {{#each uniqueConstraints.composite}}
+  [{{../../ModuleName}}ErrorCode.DUPLICATE_{{#each this}}{{uppercase this}}{{#unless @last}}_{{/unless}}{{/each}}]: '{{#each this}}{{titleCase this}}{{#unless @last}} and {{/unless}}{{/each}} combination already exists',
+  {{/each}}
+  {{/if}}
+
+  {{#if hasForeignKeyReferences}}
+  // Delete validation messages
+  [{{ModuleName}}ErrorCode.CANNOT_DELETE_HAS_REFERENCES]: 'Cannot delete {{moduleName}} - has related records',
+  {{#each foreignKeyReferences}}
+  [{{../ModuleName}}ErrorCode.CANNOT_DELETE_HAS_{{uppercase table}}]: 'Cannot delete {{../moduleName}} - has {{table}} references',
+  {{/each}}
+  {{/if}}
+
+  {{#if hasBusinessRules}}
+  // Business rule messages
+  {{#each businessRules}}
+  [{{../../ModuleName}}ErrorCode.{{errorCode}}_{{uppercase field}}]: '{{message}}',
+  {{/each}}
+  {{/if}}
+};

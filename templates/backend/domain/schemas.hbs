@@ -178,3 +178,73 @@ export type {{ModuleName}}CreatedEvent = Static<typeof {{ModuleName}}CreatedEven
 export type {{ModuleName}}UpdatedEvent = Static<typeof {{ModuleName}}UpdatedEventSchema>;
 export type {{ModuleName}}DeletedEvent = Static<typeof {{ModuleName}}DeletedEventSchema>;
 {{/if}}
+
+{{#if withImport}}
+// ===== IMPORT SCHEMAS =====
+
+// Execute Import Request Schema
+export const ExecuteImportRequestSchema = Type.Object({
+  sessionId: Type.String({ format: 'uuid', description: 'Session ID from validate response' }),
+  options: Type.Optional(Type.Object({
+    skipErrors: Type.Optional(Type.Boolean({ description: 'Skip rows with errors and import only valid rows' })),
+    updateExisting: Type.Optional(Type.Boolean({ description: 'Update existing records if found' })),
+  })),
+});
+
+// Validate Import API Response Schema
+export const ValidateImportApiResponseSchema = ApiSuccessResponseSchema(
+  Type.Object({
+    sessionId: Type.String({ format: 'uuid' }),
+    summary: Type.Object({
+      totalRows: Type.Number(),
+      validRows: Type.Number(),
+      invalidRows: Type.Number(),
+      warnings: Type.Number(),
+    }),
+    errors: Type.Array(Type.Object({
+      row: Type.Number(),
+      field: Type.Optional(Type.String()),
+      message: Type.String(),
+      value: Type.Optional(Type.Any()),
+    })),
+    warnings: Type.Array(Type.Object({
+      row: Type.Number(),
+      field: Type.Optional(Type.String()),
+      message: Type.String(),
+      value: Type.Optional(Type.Any()),
+    })),
+    preview: Type.Array(Type.Any()),
+  })
+);
+
+// Execute Import API Response Schema
+export const ExecuteImportApiResponseSchema = ApiSuccessResponseSchema(
+  Type.Object({
+    jobId: Type.String({ format: 'uuid' }),
+    status: Type.String({ enum: ['processing', 'completed', 'failed'] }),
+    message: Type.String(),
+  })
+);
+
+// Import Status API Response Schema
+export const ImportStatusApiResponseSchema = ApiSuccessResponseSchema(
+  Type.Object({
+    jobId: Type.String({ format: 'uuid' }),
+    status: Type.String({ enum: ['pending', 'processing', 'completed', 'failed', 'cancelled'] }),
+    progress: Type.Number({ description: 'Progress percentage (0-100)' }),
+    totalRecords: Type.Number(),
+    processedRecords: Type.Number(),
+    successCount: Type.Number(),
+    failedCount: Type.Number(),
+    startedAt: Type.String({ format: 'date-time' }),
+    completedAt: Type.Optional(Type.String({ format: 'date-time' })),
+    error: Type.Optional(Type.String()),
+  })
+);
+
+// Export Import Types
+export type ExecuteImportRequest = Static<typeof ExecuteImportRequestSchema>;
+export type ValidateImportApiResponse = Static<typeof ValidateImportApiResponseSchema>;
+export type ExecuteImportApiResponse = Static<typeof ExecuteImportApiResponseSchema>;
+export type ImportStatusApiResponse = Static<typeof ImportStatusApiResponseSchema>;
+{{/if}}

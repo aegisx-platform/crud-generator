@@ -149,11 +149,90 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
     // Add custom validation logic here
     {{#each columns}}
     {{#if isRequired}}
-    if (!data.{{camelCase name}}?.toString().trim()) {
+    if (!data.{{toCamelCase name}}?.toString().trim()) {
       throw new Error('{{displayName}} is required');
     }
     {{/if}}
     {{/each}}
+
+    // ===== ERROR HANDLING: DUPLICATE VALIDATION =====
+    {{#if hasUniqueConstraints}}
+
+    {{#each uniqueConstraints.singleField}}
+    // Check for duplicate {{this}}
+    if (data.{{toCamelCase this}}) {
+      const existing = await this.{{../moduleName}}Repository.findBy{{toPascalCase this}}(data.{{toCamelCase this}});
+      if (existing) {
+        const error = new Error('{{titleCase this}} already exists') as any;
+        error.statusCode = 409;
+        error.code = '{{uppercase ../tableName}}_DUPLICATE_{{uppercase this}}';
+        throw error;
+      }
+    }
+
+    {{/each}}
+    {{#each uniqueConstraints.composite}}
+    // Check for duplicate composite key: {{#each this}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+    {{#if this.[0]}}
+    if ({{#each this}}data.{{toCamelCase this}}{{#unless @last}} && {{/unless}}{{/each}}) {
+      const existing = await this.{{../../moduleName}}Repository.findBy{{#each this}}{{toPascalCase this}}{{#unless @last}}And{{/unless}}{{/each}}({ {{#each this}}{{toCamelCase this}}: data.{{toCamelCase this}}{{#unless @last}}, {{/unless}}{{/each}} });
+      if (existing) {
+        const error = new Error('{{#each this}}{{titleCase this}}{{#unless @last}} and {{/unless}}{{/each}} combination already exists') as any;
+        error.statusCode = 409;
+        error.code = '{{uppercase ../../tableName}}_DUPLICATE_{{#each this}}{{uppercase this}}{{#unless @last}}_{{/unless}}{{/each}}';
+        throw error;
+      }
+    }
+    {{/if}}
+
+    {{/each}}
+    {{/if}}
+
+    // ===== ERROR HANDLING: BUSINESS RULES VALIDATION =====
+    {{#if hasBusinessRules}}
+
+    {{#each businessRules}}
+    {{#if (eq type 'date_not_future')}}
+    // Business rule: {{field}} cannot be in the future
+    if (data.{{toCamelCase field}}) {
+      const fieldDate = new Date(data.{{toCamelCase field}});
+      const now = new Date();
+      if (fieldDate > now) {
+        const error = new Error('{{message}}') as any;
+        error.statusCode = 422;
+        error.code = '{{uppercase ../../tableName}}_{{errorCode}}_{{uppercase field}}';
+        throw error;
+      }
+    }
+
+    {{/if}}
+    {{#if (eq type 'positive_number')}}
+    // Business rule: {{field}} must be positive
+    if (data.{{toCamelCase field}} !== undefined && data.{{toCamelCase field}} !== null) {
+      if (data.{{toCamelCase field}} < 0) {
+        const error = new Error('{{message}}') as any;
+        error.statusCode = 422;
+        error.code = '{{uppercase ../../tableName}}_{{errorCode}}_{{uppercase field}}';
+        throw error;
+      }
+    }
+
+    {{/if}}
+    {{#if (eq type 'email_format')}}
+    // Business rule: {{field}} must be valid email
+    if (data.{{toCamelCase field}}) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(data.{{toCamelCase field}})) {
+        const error = new Error('{{message}}') as any;
+        error.statusCode = 422;
+        error.code = '{{uppercase ../../tableName}}_{{errorCode}}_{{uppercase field}}';
+        throw error;
+      }
+    }
+
+    {{/if}}
+    {{/each}}
+    {{/if}}
   }
 
   /**
@@ -178,7 +257,7 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
   /**
    * Validate before deletion
    */
-  protected async validateDelete(_id: string | number, existing: {{ModuleName}}): Promise<void> {
+  protected async validateDelete(id: string | number, existing: {{ModuleName}}): Promise<void> {
     // Add deletion validation logic here
     // Example: Prevent deletion if entity has dependent records
     {{#each columns}}
@@ -209,6 +288,30 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
     {{/if}}
     {{/if}}
     {{/each}}
+
+    // ===== ERROR HANDLING: FOREIGN KEY REFERENCE VALIDATION =====
+    {{#if hasForeignKeyReferences}}
+
+    // Check if record can be deleted (has foreign key references)
+    const deleteCheck = await this.{{moduleName}}Repository.canBeDeleted(id);
+
+    if (!deleteCheck.canDelete) {
+      const nonCascadeRefs = deleteCheck.blockedBy.filter(ref => !ref.cascade);
+
+      if (nonCascadeRefs.length > 0) {
+        // Build detailed error message
+        const refDetails = nonCascadeRefs.map(ref => `${ref.count} ${ref.table}`).join(', ');
+        const error = new Error(`Cannot delete {{moduleName}} - has ${refDetails} references`) as any;
+        error.statusCode = 422;
+        error.code = '{{uppercase tableName}}_CANNOT_DELETE_HAS_REFERENCES';
+        error.details = {
+          references: deleteCheck.blockedBy
+        };
+        throw error;
+      }
+    }
+
+    {{/if}}
   }
 
 {{#if (or (eq package 'enterprise') (eq package 'full'))}}

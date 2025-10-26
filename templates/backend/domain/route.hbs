@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { Type } from '@sinclair/typebox';
-import { {{ModuleName}}Controller } from '../controllers/{{kebabCase currentRoute.camelName}}.controller';
+import { {{ModuleName}}Controller } from '../controllers/{{toKebabCase currentRoute.camelName}}.controller';
 import {
   Create{{ModuleName}}Schema,
   Update{{ModuleName}}Schema,
@@ -10,7 +10,7 @@ import {
   {{ModuleName}}ResponseSchema,
   {{ModuleName}}ListResponseSchema,
   Flexible{{ModuleName}}ListResponseSchema,
-} from '../schemas/{{kebabCase currentRoute.camelName}}.schemas';
+} from '../schemas/{{toKebabCase currentRoute.camelName}}.schemas';
 {{#if (or (eq package 'enterprise') (eq package 'full'))}}
 import {
   DropdownQuerySchema,
@@ -56,6 +56,7 @@ export async function {{currentRoute.camelName}}Routes(
         401: SchemaRefs.Unauthorized,
         403: SchemaRefs.Forbidden,
         409: SchemaRefs.Conflict,
+        422: SchemaRefs.UnprocessableEntity,
         500: SchemaRefs.ServerError
       }
     },
@@ -127,6 +128,7 @@ export async function {{currentRoute.camelName}}Routes(
         403: SchemaRefs.Forbidden,
         404: SchemaRefs.NotFound,
         409: SchemaRefs.Conflict,
+        422: SchemaRefs.UnprocessableEntity,
         500: SchemaRefs.ServerError
       }
     },
@@ -150,6 +152,7 @@ export async function {{currentRoute.camelName}}Routes(
         401: SchemaRefs.Unauthorized,
         403: SchemaRefs.Forbidden,
         404: SchemaRefs.NotFound,
+        422: SchemaRefs.UnprocessableEntity,
         500: SchemaRefs.ServerError
       }
     },
