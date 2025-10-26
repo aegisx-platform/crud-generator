@@ -4,14 +4,40 @@
 
 Modern CRUD API generator with TypeBox schemas, WebSocket events, and multi-package support.
 
+## 🎉 What's New in v2.0.1
+
+**Import Dialog Type Alignment Fix** - Critical fixes for modules using `--with-import`:
+
+- ✅ Fixed ImportJob interface to match BaseImportService API responses
+- ✅ Corrected progress tracking (direct number 0-100, not nested object)
+- ✅ Simplified summary properties (flat structure: `successCount`, `failedCount`)
+- ✅ Fixed error handling (single `error` string instead of array)
+- ✅ Removed unsupported 'partial' status
+
+**Session 39 Summary**:
+
+- Analyzed import dialog template type mismatches
+- Identified root cause: nested object structure vs flat API response
+- Fixed templates: `import-dialog.hbs`, `types.hbs`, `schemas.hbs`
+- Validated fix with Budgets module regeneration
+- Created comprehensive documentation for v2.0.1 release
+
+See [CHANGELOG](../../../docs/crud-generator/CHANGELOG.md) for complete details.
+
 ## 📚 Complete Documentation
 
-**For comprehensive documentation, see:** **[📖 Complete CRUD Generator Documentation](../../docs/crud-generator/README.md)**
+**For comprehensive documentation, see:** **[📖 Complete CRUD Generator Documentation](../../../docs/crud-generator/README.md)**
 
-- **[📖 README](../../docs/crud-generator/README.md)** - Quick start and overview
-- **[📋 Error Handling Guide](../../docs/crud-generator/ERROR_HANDLING_GUIDE.md)** - Automatic error detection and handling
-- **[✅ Validation Reference](../../docs/crud-generator/VALIDATION_REFERENCE.md)** - Auto-detected validation rules
-- **[🧪 Testing Guide](../../docs/crud-generator/TESTING_GUIDE.md)** - Testing strategies and best practices
+### Essential Guides
+
+- **[📖 Main README](../../../docs/crud-generator/README.md)** - Documentation hub
+- **[⚡ Quick Commands](../../../docs/crud-generator/QUICK_COMMANDS.md)** - CLI reference
+- **[🔔 Events Guide](../../../docs/crud-generator/EVENTS_GUIDE.md)** - WebSocket events (`--with-events`)
+- **[📥 Import Guide](../../../docs/crud-generator/IMPORT_GUIDE.md)** - Bulk import (`--with-import`)
+- **[📋 CHANGELOG](../../../docs/crud-generator/CHANGELOG.md)** - Version history
+- **[❌ Error Handling Guide](../../../docs/crud-generator/ERROR_HANDLING_GUIDE.md)** - Error detection
+- **[✅ Validation Reference](../../../docs/crud-generator/VALIDATION_REFERENCE.md)** - Validation rules
+- **[🧪 Testing Guide](../../../docs/crud-generator/TESTING_GUIDE.md)** - Testing strategies
 
 ---
 
