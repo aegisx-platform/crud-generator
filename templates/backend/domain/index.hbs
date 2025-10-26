@@ -1,12 +1,12 @@
 import fp from 'fastify-plugin';
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
-import { {{ModuleName}}Controller } from './controllers/{{kebabCase currentRoute.camelName}}.controller';
-import { {{ModuleName}}Service } from './services/{{kebabCase currentRoute.camelName}}.service';
-import { {{ModuleName}}Repository } from './repositories/{{kebabCase currentRoute.camelName}}.repository';
+import { {{ModuleName}}Controller } from './controllers/{{toKebabCase currentRoute.camelName}}.controller';
+import { {{ModuleName}}Service } from './services/{{toKebabCase currentRoute.camelName}}.service';
+import { {{ModuleName}}Repository } from './repositories/{{toKebabCase currentRoute.camelName}}.repository';
 import { {{currentRoute.camelName}}Routes } from './routes/index';
 {{#if withImport}}
-import { {{currentRoute.camelName}}ImportRoutes } from './routes/{{kebabCase currentRoute.camelName}}-import.routes';
-import { {{ModuleName}}ImportService } from './services/{{kebabCase currentRoute.camelName}}-import.service';
+import { {{currentRoute.camelName}}ImportRoutes } from './routes/{{toKebabCase currentRoute.camelName}}-import.routes';
+import { {{ModuleName}}ImportService } from './services/{{toKebabCase currentRoute.camelName}}-import.service';
 {{/if}}
 {{#if (or (eq package 'enterprise') (eq package 'full'))}}
 import { ExportService } from '../../services/export.service';
@@ -45,9 +45,6 @@ export default fp(
     );
     {{#if (or (eq package 'enterprise') (eq package 'full'))}}
     const exportService = new ExportService();
-    const {{moduleName}}Controller = new {{ModuleName}}Controller({{moduleName}}Service, exportService);
-    {{else}}
-    const {{moduleName}}Controller = new {{ModuleName}}Controller({{moduleName}}Service);
     {{/if}}
     {{#if withImport}}
     const {{moduleName}}ImportService = new {{ModuleName}}ImportService(
@@ -56,20 +53,27 @@ export default fp(
     );
     {{/if}}
 
+    // Controller instantiation with proper dependencies
+    const {{moduleName}}Controller = new {{ModuleName}}Controller(
+      {{moduleName}}Service{{#if (or (eq package 'enterprise') (eq package 'full'))}},
+      exportService{{/if}}{{#if withImport}},
+      {{moduleName}}ImportService{{/if}}
+    );
+
     // Optional: Decorate Fastify instance with service for cross-plugin access
     // fastify.decorate('{{moduleName}}Service', {{moduleName}}Service);
 
     // Register routes with controller dependency
     await fastify.register({{currentRoute.camelName}}Routes, {
       controller: {{moduleName}}Controller,
-      prefix: options.prefix || '/{{kebabCase tableName}}'
+      prefix: options.prefix || '/{{toKebabCase tableName}}'
     });
 
     {{#if withImport}}
     // Register import routes
     await fastify.register({{currentRoute.camelName}}ImportRoutes, {
       controller: {{moduleName}}Controller,
-      prefix: options.prefix || '/{{kebabCase tableName}}'
+      prefix: options.prefix || '/{{toKebabCase tableName}}'
     });
     {{/if}}
 
@@ -93,11 +97,11 @@ export default fp(
 );
 
 // Re-exports for external consumers
-export * from './schemas/{{kebabCase currentRoute.camelName}}.schemas';
-export * from './types/{{kebabCase currentRoute.camelName}}.types';
-export { {{ModuleName}}Repository } from './repositories/{{kebabCase currentRoute.camelName}}.repository';
-export { {{ModuleName}}Service } from './services/{{kebabCase currentRoute.camelName}}.service';
-export { {{ModuleName}}Controller } from './controllers/{{kebabCase currentRoute.camelName}}.controller';
+export * from './schemas/{{toKebabCase currentRoute.camelName}}.schemas';
+export * from './types/{{toKebabCase currentRoute.camelName}}.types';
+export { {{ModuleName}}Repository } from './repositories/{{toKebabCase currentRoute.camelName}}.repository';
+export { {{ModuleName}}Service } from './services/{{toKebabCase currentRoute.camelName}}.service';
+export { {{ModuleName}}Controller } from './controllers/{{toKebabCase currentRoute.camelName}}.controller';
 
 // Re-export commonly used types for external use
 export type {
@@ -110,11 +114,11 @@ export type {
   {{ModuleName}}CreatedEvent,
   {{ModuleName}}UpdatedEvent,
   {{ModuleName}}DeletedEvent{{/if}}
-} from './schemas/{{kebabCase currentRoute.camelName}}.schemas';
+} from './schemas/{{toKebabCase currentRoute.camelName}}.schemas';
 
 {{#if withEvents}}
 // Event type definitions for external consumers
-import { {{ModuleName}} } from './schemas/{{kebabCase currentRoute.camelName}}.schemas';
+import { {{ModuleName}} } from './schemas/{{toKebabCase currentRoute.camelName}}.schemas';
 
 export interface {{ModuleName}}EventHandlers {
   onCreated?: (data: {{ModuleName}}) => void | Promise<void>;

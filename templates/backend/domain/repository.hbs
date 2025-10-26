@@ -7,7 +7,7 @@ import {
   type Get{{ModuleName}}Query,
   type List{{ModuleName}}Query,
   type {{ModuleName}}Entity
-} from '../types/{{kebabCase currentRoute.camelName}}.types';
+} from '../types/{{toKebabCase currentRoute.camelName}}.types';
 
 export interface {{ModuleName}}ListQuery extends BaseListQuery {
   // Smart field-based filters for {{ModuleName}}
@@ -138,7 +138,7 @@ export class {{ModuleName}}Repository extends BaseRepository<{{ModuleName}}, Cre
   protected getSortField(sortBy: string): string {
     const sortFields: Record<string, string> = {
       {{#each columns}}
-      {{camelCase name}}: '{{@root.tableName}}.{{name}}'{{#unless @last}},{{/unless}}
+      {{toCamelCase name}}: '{{@root.tableName}}.{{name}}'{{#unless @last}},{{/unless}}
       {{/each}}
     };
 
@@ -177,9 +177,9 @@ export class {{ModuleName}}Repository extends BaseRepository<{{ModuleName}}, Cre
   {{#each columns}}
   {{#unless (or isPrimaryKey (eq name 'created_at') (eq name 'updated_at'))}}
   {{#if (isDisplayField this)}}
-  async findBy{{pascalCase name}}({{camelCase name}}: {{tsType}}): Promise<{{@root.ModuleName}} | null> {
+  async findBy{{toPascalCase name}}({{toCamelCase name}}: {{tsType}}): Promise<{{@root.ModuleName}} | null> {
     const query = this.getJoinQuery();
-    const row = await query.where('{{@root.tableName}}.{{name}}', {{camelCase name}}).first();
+    const row = await query.where('{{@root.tableName}}.{{name}}', {{toCamelCase name}}).first();
     return row ? this.transformToEntity(row) : null;
   }
 
@@ -195,9 +195,9 @@ export class {{ModuleName}}Repository extends BaseRepository<{{ModuleName}}, Cre
    * Find by unique field: {{this}}
    * Used for duplicate detection before insert/update
    */
-  async findBy{{pascalCase this}}({{camelCase this}}: string | number): Promise<{{@root.ModuleName}} | null> {
+  async findBy{{toPascalCase this}}({{toCamelCase this}}: string | number): Promise<{{@root.ModuleName}} | null> {
     const query = this.getJoinQuery();
-    const row = await query.where('{{@root.tableName}}.{{this}}', {{camelCase this}}).first();
+    const row = await query.where('{{@root.tableName}}.{{this}}', {{toCamelCase this}}).first();
     return row ? this.transformToEntity(row) : null;
   }
 
@@ -207,10 +207,10 @@ export class {{ModuleName}}Repository extends BaseRepository<{{ModuleName}}, Cre
    * Find by composite unique key: {{#each this}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
    * Used for duplicate detection before insert/update
    */
-  async findBy{{#each this}}{{pascalCase this}}{{#unless @last}}And{{/unless}}{{/each}}(params: { {{#each this}}{{camelCase this}}: string | number{{#unless @last}}, {{/unless}}{{/each}} }): Promise<{{@root.ModuleName}} | null> {
+  async findBy{{#each this}}{{toPascalCase this}}{{#unless @last}}And{{/unless}}{{/each}}(params: { {{#each this}}{{toCamelCase this}}: string | number{{#unless @last}}, {{/unless}}{{/each}} }): Promise<{{@root.ModuleName}} | null> {
     const query = this.getJoinQuery();
     {{#each this}}
-    query.where('{{@root.tableName}}.{{this}}', params.{{camelCase this}});
+    query.where('{{@root.tableName}}.{{this}}', params.{{toCamelCase this}});
     {{/each}}
     const row = await query.first();
     return row ? this.transformToEntity(row) : null;
@@ -244,16 +244,16 @@ export class {{ModuleName}}Repository extends BaseRepository<{{ModuleName}}, Cre
 
     {{#each foreignKeyReferences}}
     // Check {{table}} references
-    const {{camelCase table}}Count = await this.knex('{{table}}')
+    const {{toCamelCase table}}Count = await this.knex('{{table}}')
       .where('{{field}}', id)
       .count('* as count')
       .first();
 
-    if (parseInt({{camelCase table}}Count?.count as string || '0') > 0) {
+    if (parseInt({{toCamelCase table}}Count?.count as string || '0') > 0) {
       blockedBy.push({
         table: '{{table}}',
         field: '{{field}}',
-        count: parseInt({{camelCase table}}Count?.count as string || '0'),
+        count: parseInt({{toCamelCase table}}Count?.count as string || '0'),
         cascade: {{#if cascade}}true{{else}}false{{/if}}
       });
     }

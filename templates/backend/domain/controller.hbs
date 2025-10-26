@@ -1,17 +1,26 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { Static } from '@sinclair/typebox';
-import { {{ModuleName}}Service } from '../services/{{kebabCase currentRoute.camelName}}.service';
-import { Create{{ModuleName}}, Update{{ModuleName}} } from '../types/{{kebabCase currentRoute.camelName}}.types';
+import { {{ModuleName}}Service } from '../services/{{toKebabCase currentRoute.camelName}}.service';
+import { Create{{ModuleName}}, Update{{ModuleName}} } from '../types/{{toKebabCase currentRoute.camelName}}.types';
 import {
   Create{{ModuleName}}Schema,
   Update{{ModuleName}}Schema,
   {{ModuleName}}IdParamSchema,
   Get{{ModuleName}}QuerySchema,
   List{{ModuleName}}QuerySchema
-} from '../schemas/{{kebabCase currentRoute.camelName}}.schemas';
+} from '../schemas/{{toKebabCase currentRoute.camelName}}.schemas';
 {{#if (or (eq package 'enterprise') (eq package 'full'))}}
 import { ExportQuerySchema } from '../../../schemas/export.schemas';
 import { ExportService, ExportField } from '../../../services/export.service';
+{{/if}}
+{{#if withImport}}
+import { {{ModuleName}}ImportService } from '../services/{{toKebabCase currentRoute.camelName}}-import.service';
+import {
+  ValidateImportApiResponseSchema,
+  ExecuteImportApiResponseSchema,
+  ExecuteImportRequestSchema,
+  ImportStatusApiResponseSchema,
+} from '../schemas/{{toKebabCase currentRoute.camelName}}.schemas';
 {{/if}}
 {{#if (or (eq package 'enterprise') (eq package 'full'))}}
 import {
@@ -40,7 +49,8 @@ import {
 export class {{ModuleName}}Controller {
   constructor(
     private {{moduleName}}Service: {{ModuleName}}Service{{#if (or (eq package 'enterprise') (eq package 'full'))}},
-    private exportService: ExportService{{/if}}
+    private exportService: ExportService{{/if}}{{#if withImport}},
+    private importService: {{ModuleName}}ImportService{{/if}}
   ) {}
 
   /**
@@ -590,7 +600,7 @@ export class {{ModuleName}}Controller {
    */
   private generateExportFilename(format: string, selectedCount?: number): string {
     const timestamp = new Date().toISOString().split('T')[0];
-    const module = '{{kebabCase currentRoute.camelName}}';
+    const module = '{{toKebabCase currentRoute.camelName}}';
     
     let suffix = '';
     if (selectedCount && selectedCount > 0) {
@@ -882,28 +892,8 @@ export class {{ModuleName}}Controller {
         skipWarnings: true, // Always skip warnings/errors - will import only valid rows
       });
 
-      // Map to frontend-expected format
-      const mappedJob = {
-        jobId: result.jobId,
-        sessionId: sessionId,
-        status: result.status,
-        filename: result.summary.fileName || 'import',
-        totalRows: result.summary.totalRows,
-        progress: {
-          current: result.progress.current,
-          total: result.progress.total,
-          percentage: result.progress.percentage,
-        },
-        summary: {
-          successful: result.summary.successfulRows,
-          failed: result.summary.failedRows,
-          total: result.summary.totalRows,
-        },
-        startedAt: new Date().toISOString(),
-        message: result.message,
-      };
-
-      return reply.code(202).success(mappedJob, 'Import job started successfully');
+      // Return job information (client can poll /import/status/:jobId for progress)
+      return reply.code(202).success(result, 'Import job started successfully');
     } catch (error: any) {
       request.log.error(error, 'Failed to execute import');
       return reply.error(
@@ -935,28 +925,8 @@ export class {{ModuleName}}Controller {
           .error('JOB_NOT_FOUND', `Import job ${jobId} not found`);
       }
 
-      // Map to frontend format
-      const mappedStatus = {
-        jobId: status.jobId,
-        status: status.status,
-        filename: status.summary.fileName || 'import',
-        totalRows: status.summary.totalRows,
-        progress: {
-          current: status.progress.current,
-          total: status.progress.total,
-          percentage: status.progress.percentage,
-        },
-        summary: {
-          successful: status.summary.successfulRows,
-          failed: status.summary.failedRows,
-          total: status.summary.totalRows,
-        },
-        startedAt: status.startedAt,
-        completedAt: status.completedAt,
-        message: status.message,
-      };
-
-      return reply.success(mappedStatus, 'Import job status retrieved successfully');
+      // Return status directly - ImportJobStatusResponse has all necessary fields
+      return reply.success(status, 'Import job status retrieved successfully');
     } catch (error: any) {
       request.log.error(error, 'Failed to get import job status');
       return reply.error(

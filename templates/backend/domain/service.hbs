@@ -1,5 +1,5 @@
 import { BaseService } from '../../../shared/services/base.service';
-import { {{ModuleName}}Repository } from '../repositories/{{kebabCase currentRoute.camelName}}.repository';
+import { {{ModuleName}}Repository } from '../repositories/{{toKebabCase currentRoute.camelName}}.repository';
 {{#if withEvents}}
 import { EventService } from '../../../shared/websocket/event.service';
 import { CrudEventHelper } from '../../../shared/websocket/crud-event-helper';
@@ -14,7 +14,7 @@ import {
   {{ModuleName}}ErrorCode,
   {{ModuleName}}ErrorMessages,
   {{/if}}
-} from '../types/{{kebabCase currentRoute.camelName}}.types';
+} from '../types/{{toKebabCase currentRoute.camelName}}.types';
 
 /**
  * {{ModuleName}} Service
@@ -178,7 +178,7 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
     // Add custom validation logic here
     {{#each columns}}
     {{#if isRequired}}
-    if (!data.{{camelCase name}}?.toString().trim()) {
+    if (!data.{{toCamelCase name}}?.toString().trim()) {
       throw new Error('{{displayName}} is required');
     }
     {{/if}}
@@ -190,7 +190,7 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
     {{#each uniqueConstraints.singleField}}
     // Check for duplicate {{this}}
     if (data.{{this}}) {
-      const existing = await this.{{../moduleName}}Repository.findBy{{pascalCase this}}(data.{{this}});
+      const existing = await this.{{../moduleName}}Repository.findBy{{toPascalCase this}}(data.{{this}});
       if (existing) {
         const error = new Error({{../ModuleName}}ErrorMessages[{{../ModuleName}}ErrorCode.DUPLICATE_{{uppercase this}}]) as any;
         error.statusCode = 409;
@@ -203,7 +203,7 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
     {{#each uniqueConstraints.composite}}
     // Check for duplicate composite key: {{#each this}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
     if ({{#each this}}data.{{this}}{{#unless @last}} && {{/unless}}{{/each}}) {
-      const existing = await this.{{../../moduleName}}Repository.findBy{{#each this}}{{pascalCase this}}{{#unless @last}}And{{/unless}}{{/each}}({ {{#each this}}{{this}}: data.{{this}}{{#unless @last}}, {{/unless}}{{/each}} });
+      const existing = await this.{{../../moduleName}}Repository.findBy{{#each this}}{{toPascalCase this}}{{#unless @last}}And{{/unless}}{{/each}}({ {{#each this}}{{this}}: data.{{this}}{{#unless @last}}, {{/unless}}{{/each}} });
       if (existing) {
         const error = new Error({{../../ModuleName}}ErrorMessages[{{../../ModuleName}}ErrorCode.DUPLICATE_{{#each this}}{{uppercase this}}{{#unless @last}}_{{/unless}}{{/each}}]) as any;
         error.statusCode = 409;
@@ -754,7 +754,7 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
     {{#unless (or isPrimaryKey (eq name 'created_at') (eq name 'updated_at'))}}
     {{#if (isDisplayField this)}}
     if (field === '{{name}}' && options.value) {
-      existing = await this.{{../moduleName}}Repository.findBy{{pascalCase name}}(options.value);
+      existing = await this.{{../moduleName}}Repository.findBy{{toPascalCase name}}(options.value);
     }{{#unless @last}} else {{/unless}}
     {{/if}}
     {{/unless}}

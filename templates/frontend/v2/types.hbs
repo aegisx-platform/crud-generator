@@ -199,10 +199,11 @@ export interface ImportRowPreview extends Partial<{{PascalCase}}> {
 }
 
 export interface ImportSummary {
-  total: number;
-  valid: number;
-  invalid: number;
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
   duplicates: number;
+  warnings?: number;
   willCreate?: number;
   willUpdate?: number;
   willSkip?: number;
@@ -237,22 +238,15 @@ export interface ImportProgress {
 
 export interface ImportJob {
   jobId: string;
-  sessionId: string;
-  filename: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'partial';
-  progress: ImportProgress;
-  summary: ImportSummary;
-  errors: Array<{
-    rowNumber: number;
-    field: string;
-    message: string;
-    data?: any;
-  }>;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  progress: number; // Progress percentage (0-100)
+  totalRecords: number;
+  processedRecords: number;
+  successCount: number;
+  failedCount: number;
   startedAt: string;
   completedAt?: string;
-  estimatedCompletion?: string;
-  duration?: number;
-  userId?: string;
+  error?: string;
 }
 
 // ===== UTILITY TYPES =====

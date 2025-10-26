@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyPluginOptions } from 'fastify';
 import { Type } from '@sinclair/typebox';
-import { {{ModuleName}}Controller } from '../controllers/{{kebabCase currentRoute.camelName}}.controller';
+import { {{ModuleName}}Controller } from '../controllers/{{toKebabCase currentRoute.camelName}}.controller';
 import {
   Create{{ModuleName}}Schema,
   Update{{ModuleName}}Schema,
@@ -10,7 +10,7 @@ import {
   {{ModuleName}}ResponseSchema,
   {{ModuleName}}ListResponseSchema,
   Flexible{{ModuleName}}ListResponseSchema,
-} from '../schemas/{{kebabCase currentRoute.camelName}}.schemas';
+} from '../schemas/{{toKebabCase currentRoute.camelName}}.schemas';
 {{#if (or (eq package 'enterprise') (eq package 'full'))}}
 import {
   DropdownQuerySchema,

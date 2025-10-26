@@ -230,22 +230,15 @@ export const ExecuteImportApiResponseSchema = ApiSuccessResponseSchema(
 export const ImportStatusApiResponseSchema = ApiSuccessResponseSchema(
   Type.Object({
     jobId: Type.String({ format: 'uuid' }),
-    status: Type.String({ enum: ['processing', 'completed', 'failed'] }),
-    progress: Type.Object({
-      current: Type.Number(),
-      total: Type.Number(),
-      percentage: Type.Number(),
-    }),
-    summary: Type.Optional(Type.Object({
-      created: Type.Number(),
-      updated: Type.Number(),
-      failed: Type.Number(),
-      skipped: Type.Number(),
-    })),
-    errors: Type.Optional(Type.Array(Type.Object({
-      row: Type.Number(),
-      message: Type.String(),
-    }))),
+    status: Type.String({ enum: ['pending', 'processing', 'completed', 'failed', 'cancelled'] }),
+    progress: Type.Number({ description: 'Progress percentage (0-100)' }),
+    totalRecords: Type.Number(),
+    processedRecords: Type.Number(),
+    successCount: Type.Number(),
+    failedCount: Type.Number(),
+    startedAt: Type.String({ format: 'date-time' }),
+    completedAt: Type.Optional(Type.String({ format: 'date-time' })),
+    error: Type.Optional(Type.String()),
   })
 );
 

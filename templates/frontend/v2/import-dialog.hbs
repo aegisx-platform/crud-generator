@@ -173,25 +173,25 @@ type ImportStep = 'upload' | 'review' | 'options' | 'progress' | 'complete';
             <div class="grid grid-cols-4 gap-4 mb-6">
               <div class="stat-card">
                 <div class="stat-value">
-                  \{{ validationResult()?.totalRows }}
+                  \{{ validationResult()?.summary?.totalRows }}
                 </div>
                 <div class="stat-label">Total Rows</div>
               </div>
               <div class="stat-card stat-success">
                 <div class="stat-value">
-                  \{{ validationResult()?.validRows }}
+                  \{{ validationResult()?.summary?.validRows }}
                 </div>
                 <div class="stat-label">Valid</div>
               </div>
               <div class="stat-card stat-error">
                 <div class="stat-value">
-                  \{{ validationResult()?.invalidRows }}
+                  \{{ validationResult()?.summary?.invalidRows }}
                 </div>
                 <div class="stat-label">Invalid</div>
               </div>
               <div class="stat-card stat-warning">
                 <div class="stat-value">
-                  \{{ validationResult()!.summary.duplicates }}
+                  \{{ validationResult()?.summary?.duplicates }}
                 </div>
                 <div class="stat-label">Duplicates</div>
               </div>
@@ -388,31 +388,24 @@ type ImportStep = 'upload' | 'review' | 'options' | 'progress' | 'complete';
                 <div class="stat">
                   <span class="stat-label">Progress</span>
                   <span class="stat-value"
-                    >\{{ importJob()!.progress.percentage }}%</span
+                    >\{{ importJob()!.progress }}%</span
                   >
                 </div>
                 <div class="stat">
                   <span class="stat-label">Processed</span>
                   <span class="stat-value"
-                    >\{{ importJob()!.progress.current }} /
-                    \{{ importJob()!.progress.total }}</span
+                    >\{{ importJob()!.processedRecords }} /
+                    \{{ importJob()!.totalRecords }}</span
                   >
                 </div>
               </div>
 
               <mat-progress-bar
                 mode="determinate"
-                [value]="importJob()!.progress.percentage || 0"
+                [value]="importJob()!.progress || 0"
                 class="mt-4"
               >
               </mat-progress-bar>
-
-              @if (importJob()?.estimatedCompletion) {
-                <p class="text-sm text-gray-600 mt-2">
-                  Estimated completion:
-                  \{{ formatEstimatedTime(importJob()!.estimatedCompletion!) }}
-                </p>
-              }
             </div>
           </div>
         }
@@ -424,86 +417,37 @@ type ImportStep = 'upload' | 'review' | 'options' | 'progress' | 'complete';
               <mat-icon
                 class="complete-icon"
                 [class.success]="importJob()?.status === 'completed'"
-                [class.warning]="importJob()?.status === 'partial'"
               >
-                \{{
-                  importJob()?.status === 'completed'
-                    ? 'check_circle'
-                    : 'warning'
-                }}
+                check_circle
               </mat-icon>
-              <h3>
-                \{{
-                  importJob()?.status === 'completed'
-                    ? 'Import Completed!'
-                    : 'Import Partially Completed'
-                }}
-              </h3>
+              <h3>Import Completed!</h3>
 
               <div class="result-summary">
                 <div class="result-row">
                   <span>Total Rows:</span>
-                  <strong>\{{ importJob()!.summary.total }}</strong>
+                  <strong>\{{ importJob()!.totalRecords }}</strong>
+                </div>
+                <div class="result-row">
+                  <span>Processed:</span>
+                  <strong>\{{ importJob()!.processedRecords }}</strong>
                 </div>
                 <div class="result-row success">
                   <span>Successful:</span>
-                  <strong>\{{ importJob()!.summary.successful }}</strong>
+                  <strong>\{{ importJob()!.successCount }}</strong>
                 </div>
-                @if (importJob()!.summary.created) {
-                  <div class="result-row">
-                    <span>Created:</span>
-                    <strong>\{{ importJob()!.summary.created }}</strong>
-                  </div>
-                }
-                @if (importJob()!.summary.updated) {
-                  <div class="result-row">
-                    <span>Updated:</span>
-                    <strong>\{{ importJob()!.summary.updated }}</strong>
-                  </div>
-                }
-                @if (hasFailed) {
+                @if (importJob()!.failedCount > 0) {
                   <div class="result-row error">
                     <span>Failed:</span>
-                    <strong>\{{ importJob()!.summary.failed }}</strong>
-                  </div>
-                }
-                @if (hasSkipped) {
-                  <div class="result-row">
-                    <span>Skipped:</span>
-                    <strong>\{{ importJob()!.summary.skipped }}</strong>
-                  </div>
-                }
-                @if (importJob()?.duration) {
-                  <div class="result-row">
-                    <span>Duration:</span>
-                    <strong>\{{
-                      formatDuration(importJob()!.duration!)
-                    }}</strong>
+                    <strong>\{{ importJob()!.failedCount }}</strong>
                   </div>
                 }
               </div>
 
-              @if (importJob()?.errors && importJob()!.errors.length > 0) {
+              @if (importJob()?.error) {
                 <div class="errors-section mt-4">
-                  <h4 class="text-sm font-semibold mb-2">
-                    Errors (\{{ importJob()!.errors.length }})
-                  </h4>
-                  <div class="errors-list">
-                    @for (
-                      error of importJob()!.errors.slice(0, 10);
-                      track error.rowNumber
-                    ) {
-                      <div class="error-detail">
-                        <strong>Row \{{ error.rowNumber }}:</strong>
-                        \{{ error.field }} - \{{ error.message }}
-                      </div>
-                    }
-                    @if (importJob()!.errors.length > 10) {
-                      <p class="text-sm text-gray-600 mt-2">
-                        ... and \{{ importJob()!.errors.length - 10 }} more
-                        errors
-                      </p>
-                    }
+                  <h4 class="text-sm font-semibold mb-2 text-red-600">Error</h4>
+                  <div class="error-detail">
+                    \{{ importJob()!.error }}
                   </div>
                 </div>
               }
@@ -1137,8 +1081,7 @@ export class {{PascalCase}}ImportDialogComponent {
 
           if (
             response.data.status === 'completed' ||
-            response.data.status === 'failed' ||
-            response.data.status === 'partial'
+            response.data.status === 'failed'
           ) {
             this.stopPolling();
             this.currentStep.set('complete');
@@ -1147,12 +1090,6 @@ export class {{PascalCase}}ImportDialogComponent {
               this.snackBar.open('Import completed successfully!', 'Close', {
                 duration: 5000,
               });
-            } else if (response.data.status === 'partial') {
-              this.snackBar.open(
-                'Import partially completed with some errors',
-                'Close',
-                { duration: 5000 },
-              );
             } else {
               this.snackBar.open('Import failed', 'Close', { duration: 5000 });
             }
@@ -1189,28 +1126,10 @@ export class {{PascalCase}}ImportDialogComponent {
     return action; // Uses CSS classes like .create, .update, .skip
   }
 
-  formatEstimatedTime(isoString: string): string {
-    const date = new Date(isoString);
-    return date.toLocaleTimeString();
-  }
-
-  formatDuration(ms: number): string {
-    const seconds = Math.floor(ms / 1000);
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
-  }
-
   // Helper functions for safe property access
   get hasFailed(): boolean {
     const job = this.importJob();
-    return !!(job?.summary?.failed && job.summary.failed > 0);
-  }
-
-  get hasSkipped(): boolean {
-    const job = this.importJob();
-    return !!(job?.summary?.skipped && job.summary.skipped > 0);
+    return !!(job?.failedCount && job.failedCount > 0);
   }
 
   onCancel(): void {

@@ -149,7 +149,7 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
     // Add custom validation logic here
     {{#each columns}}
     {{#if isRequired}}
-    if (!data.{{camelCase name}}?.toString().trim()) {
+    if (!data.{{toCamelCase name}}?.toString().trim()) {
       throw new Error('{{displayName}} is required');
     }
     {{/if}}
@@ -160,8 +160,8 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
 
     {{#each uniqueConstraints.singleField}}
     // Check for duplicate {{this}}
-    if (data.{{camelCase this}}) {
-      const existing = await this.{{../moduleName}}Repository.findBy{{pascalCase this}}(data.{{camelCase this}});
+    if (data.{{toCamelCase this}}) {
+      const existing = await this.{{../moduleName}}Repository.findBy{{toPascalCase this}}(data.{{toCamelCase this}});
       if (existing) {
         const error = new Error('{{titleCase this}} already exists') as any;
         error.statusCode = 409;
@@ -174,8 +174,8 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
     {{#each uniqueConstraints.composite}}
     // Check for duplicate composite key: {{#each this}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
     {{#if this.[0]}}
-    if ({{#each this}}data.{{camelCase this}}{{#unless @last}} && {{/unless}}{{/each}}) {
-      const existing = await this.{{../../moduleName}}Repository.findBy{{#each this}}{{pascalCase this}}{{#unless @last}}And{{/unless}}{{/each}}({ {{#each this}}{{camelCase this}}: data.{{camelCase this}}{{#unless @last}}, {{/unless}}{{/each}} });
+    if ({{#each this}}data.{{toCamelCase this}}{{#unless @last}} && {{/unless}}{{/each}}) {
+      const existing = await this.{{../../moduleName}}Repository.findBy{{#each this}}{{toPascalCase this}}{{#unless @last}}And{{/unless}}{{/each}}({ {{#each this}}{{toCamelCase this}}: data.{{toCamelCase this}}{{#unless @last}}, {{/unless}}{{/each}} });
       if (existing) {
         const error = new Error('{{#each this}}{{titleCase this}}{{#unless @last}} and {{/unless}}{{/each}} combination already exists') as any;
         error.statusCode = 409;
@@ -194,8 +194,8 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
     {{#each businessRules}}
     {{#if (eq type 'date_not_future')}}
     // Business rule: {{field}} cannot be in the future
-    if (data.{{camelCase field}}) {
-      const fieldDate = new Date(data.{{camelCase field}});
+    if (data.{{toCamelCase field}}) {
+      const fieldDate = new Date(data.{{toCamelCase field}});
       const now = new Date();
       if (fieldDate > now) {
         const error = new Error('{{message}}') as any;
@@ -208,8 +208,8 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
     {{/if}}
     {{#if (eq type 'positive_number')}}
     // Business rule: {{field}} must be positive
-    if (data.{{camelCase field}} !== undefined && data.{{camelCase field}} !== null) {
-      if (data.{{camelCase field}} < 0) {
+    if (data.{{toCamelCase field}} !== undefined && data.{{toCamelCase field}} !== null) {
+      if (data.{{toCamelCase field}} < 0) {
         const error = new Error('{{message}}') as any;
         error.statusCode = 422;
         error.code = '{{uppercase ../../tableName}}_{{errorCode}}_{{uppercase field}}';
@@ -220,9 +220,9 @@ export class {{ModuleName}}Service extends BaseService<{{ModuleName}}, Create{{M
     {{/if}}
     {{#if (eq type 'email_format')}}
     // Business rule: {{field}} must be valid email
-    if (data.{{camelCase field}}) {
+    if (data.{{toCamelCase field}}) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(data.{{camelCase field}})) {
+      if (!emailRegex.test(data.{{toCamelCase field}})) {
         const error = new Error('{{message}}') as any;
         error.statusCode = 422;
         error.code = '{{uppercase ../../tableName}}_{{errorCode}}_{{uppercase field}}';

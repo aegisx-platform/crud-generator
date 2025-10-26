@@ -87,6 +87,7 @@ program
   )
   .option('--no-format', 'Skip auto-formatting generated files', false)
   .option('--with-import', 'Include bulk import functionality (Excel/CSV upload)', false)
+  .option('--no-register', 'Skip auto-registration in plugin.loader.ts / app.routes.ts', false)
   .action(async (tableName, options) => {
     try {
       // Interactive mode if no table name provided
@@ -297,6 +298,24 @@ program
             console.log(
               '💡 Run manually: npx prettier --write ' + tsFiles.join(' '),
             );
+          }
+        }
+
+        // Auto-registration (if not disabled)
+        if (!options.noRegister) {
+          console.log('\n📝 Auto-registration...');
+
+          if (options.target === 'backend') {
+            const { autoRegisterBackendPlugin } = require('../lib/generators/backend-generator');
+            await autoRegisterBackendPlugin(tableName, PROJECT_ROOT);
+          } else if (options.target === 'frontend') {
+            // Frontend auto-registration
+            const frontendGenerator = new FrontendGenerator(
+              path.join(__dirname, '..'),
+              PROJECT_ROOT,
+              { templateVersion: 'v2' },
+            );
+            await frontendGenerator.autoRegisterRoute(tableName);
           }
         }
       }

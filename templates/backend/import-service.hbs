@@ -90,7 +90,7 @@ export class {{ModuleName}}ImportService extends BaseImportService<{{ModuleName}
       if (!value) return null;
 
       try {
-        const existing = await repository.findBy{{pascalCase name}}(value);
+        const existing = await repository.findBy{{toPascalCase name}}(value);
         if (existing) {
           return {
             field: '{{name}}',
@@ -101,7 +101,7 @@ export class {{ModuleName}}ImportService extends BaseImportService<{{ModuleName}
           };
         }
       } catch (error) {
-        console.error('{{pascalCase name}} uniqueness check failed:', error);
+        console.error('{{toPascalCase name}} uniqueness check failed:', error);
       }
 
       return null;

@@ -9,7 +9,7 @@ import {
   type {{ModuleName}}CreatedEvent,
   type {{ModuleName}}UpdatedEvent,
   type {{ModuleName}}DeletedEvent{{/if}}
-} from '../schemas/{{kebabCase currentRoute.camelName}}.schemas';
+} from '../schemas/{{toKebabCase currentRoute.camelName}}.schemas';
 
 export {
   type {{ModuleName}},
