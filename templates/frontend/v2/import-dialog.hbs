@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnDestroy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +9,11 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { FormsModule } from '@angular/forms';
+{{#if withEvents}}
+import { takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
+import { WebSocketService } from '@shared/services/web-socket.service';
+{{/if}}
 
 import { {{PascalCase}}Service } from '../services/{{kebabCase}}.service';
 import {
@@ -920,10 +925,14 @@ type ImportStep = 'upload' | 'review' | 'options' | 'progress' | 'complete';
     `,
   ],
 })
-export class {{PascalCase}}ImportDialogComponent {
+export class {{PascalCase}}ImportDialogComponent implements OnDestroy {
   private {{camelCase}}Service = inject({{PascalCase}}Service);
   private snackBar = inject(MatSnackBar);
   private dialogRef = inject(MatDialogRef<{{PascalCase}}ImportDialogComponent>);
+{{#if withEvents}}
+  private wsService = inject(WebSocketService);
+  private destroy$ = new Subject<void>();
+{{/if}}
 
   currentStep = signal<ImportStep>('upload');
   loading = signal<boolean>(false);
@@ -948,7 +957,9 @@ export class {{PascalCase}}ImportDialogComponent {
     'errors',
   ];
 
+{{#unless withEvents}}
   private pollingInterval: any;
+{{/unless}}
 
   getStepTitle(): string {
     const titles: Record<ImportStep, string> = {
@@ -1060,7 +1071,11 @@ export class {{PascalCase}}ImportDialogComponent {
       if (response?.success && response.data) {
         this.importJob.set(response.data);
         this.currentStep.set('progress');
+{{#if withEvents}}
+        this.setupWebSocketListener(response.data.jobId);
+{{else}}
         this.startPolling(response.data.jobId);
+{{/if}}
       }
     } catch (error: any) {
       this.snackBar.open(error?.message || 'Failed to start import', 'Close', {
@@ -1071,6 +1086,41 @@ export class {{PascalCase}}ImportDialogComponent {
     }
   }
 
+{{#if withEvents}}
+  private setupWebSocketListener(jobId: string): void {
+    this.wsService
+      .listen<any>('{{kebabCase}}:import-progress')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((event) => {
+        // Only process events for this job
+        if (event.jobId !== jobId) return;
+
+        // Update import job with progress data
+        this.importJob.update((current) => ({
+          ...current!,
+          status: event.status,
+          progress: event.progress,
+          processedRecords: event.processedRecords,
+          successCount: event.successCount,
+          failedCount: event.failedCount,
+          error: event.error,
+        }));
+
+        // Handle completion/failure
+        if (event.status === 'completed' || event.status === 'failed') {
+          this.currentStep.set('complete');
+
+          if (event.status === 'completed') {
+            this.snackBar.open('Import completed successfully!', 'Close', {
+              duration: 5000,
+            });
+          } else {
+            this.snackBar.open('Import failed', 'Close', { duration: 5000 });
+          }
+        }
+      });
+  }
+{{else}}
   private startPolling(jobId: string): void {
     this.pollingInterval = setInterval(async () => {
       try {
@@ -1107,6 +1157,7 @@ export class {{PascalCase}}ImportDialogComponent {
       this.pollingInterval = null;
     }
   }
+{{/if}}
 
   goToStep(step: ImportStep): void {
     this.currentStep.set(step);
@@ -1133,11 +1184,21 @@ export class {{PascalCase}}ImportDialogComponent {
   }
 
   onCancel(): void {
+{{#if withEvents}}
+    this.destroy$.next();
+    this.destroy$.complete();
+{{else}}
     this.stopPolling();
+{{/if}}
     this.dialogRef.close();
   }
 
   ngOnDestroy(): void {
+{{#if withEvents}}
+    this.destroy$.next();
+    this.destroy$.complete();
+{{else}}
     this.stopPolling();
+{{/if}}
   }
 }
