@@ -475,14 +475,7 @@ export class {{pascalCaseHelper moduleName}}ListComponent {
       // Always use traditional API for list/search operations
       // WebSocket events are for real-time sync of CUD operations only
       await this.{{camelCaseHelper moduleName}}Service.load{{pascalCaseHelper singularName}}List(params);
-      {{#if withEvents}}
-      // With WebSocket events: read from state manager (includes real-time updates)
-      // State manager automatically syncs with API response via service
-      this.dataSource.data = this.{{camelCaseHelper singularName}}StateManager.localState();
-      {{else}}
-      // Without events: read directly from service
       this.dataSource.data = this.{{camelCaseHelper moduleName}}Service.{{camelCaseHelper moduleName}}List();
-      {{/if}}
       if (this.paginator) {
         this.paginator.length = this.{{camelCaseHelper moduleName}}Service.total{{pascalCaseHelper singularName}}();
       }
