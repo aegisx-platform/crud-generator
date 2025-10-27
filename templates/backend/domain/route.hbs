@@ -67,6 +67,35 @@ export async function {{currentRoute.camelName}}Routes(
     handler: controller.create.bind(controller)
   });
 
+{{#if (or (eq package 'enterprise') (eq package 'full'))}}
+  // ⚠️ IMPORTANT: Export route must be BEFORE /:id route
+  // Export {{moduleName}} data
+  fastify.get('/export', {
+    schema: {
+      tags: ['{{ModuleName}}'],
+      summary: 'Export {{moduleName}} data',
+      description: 'Export {{moduleName}} data in various formats (CSV, Excel, PDF)',
+      querystring: ExportQuerySchema,
+      response: {
+        200: {
+          description: 'Export file download',
+          type: 'string',
+          format: 'binary'
+        },
+        400: SchemaRefs.ValidationError,
+        401: SchemaRefs.Unauthorized,
+        403: SchemaRefs.Forbidden,
+        500: SchemaRefs.ServerError
+      }
+    },
+    preValidation: [
+      fastify.authenticate,
+      fastify.authorize(['{{moduleName}}.read', '{{moduleName}}.export', 'admin'])
+    ],
+    handler: controller.export.bind(controller)
+  });
+{{/if}}
+
   // Get {{moduleName}} by ID
   fastify.get('/:id', {
     schema: {
@@ -373,32 +402,6 @@ export async function {{currentRoute.camelName}}Routes(
     handler: controller.getStats.bind(controller)
   });
   {{/if}}
-
-  // Export {{moduleName}} data
-  fastify.get('/export', {
-    schema: {
-      tags: ['{{ModuleName}}'],
-      summary: 'Export {{moduleName}} data',
-      description: 'Export {{moduleName}} data in various formats (CSV, Excel, PDF)',
-      querystring: ExportQuerySchema,
-      response: {
-        200: {
-          description: 'Export file download',
-          type: 'string',
-          format: 'binary'
-        },
-        400: SchemaRefs.ValidationError,
-        401: SchemaRefs.Unauthorized,
-        403: SchemaRefs.Forbidden,
-        500: SchemaRefs.ServerError
-      }
-    },
-    preValidation: [
-      fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.read', '{{moduleName}}.export', 'admin'])
-    ],
-    handler: controller.export.bind(controller)
-  });
 {{/if}}
 
 {{#if (eq package 'full')}}

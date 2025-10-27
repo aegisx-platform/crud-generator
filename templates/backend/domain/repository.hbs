@@ -37,7 +37,15 @@ export class {{ModuleName}}Repository extends BaseRepository<{{ModuleName}}, Cre
         '{{@root.tableName}}.{{name}}'{{#unless @last}},{{/unless}}
         {{/if}}
         {{/each}}
-      ]
+      ],
+      [], // explicitUUIDFields
+      {
+        // Field configuration for automatic timestamp and audit field management
+        hasCreatedAt: {{#if (hasColumn columns 'created_at')}}true{{else}}false{{/if}},
+        hasUpdatedAt: {{#if (hasColumn columns 'updated_at')}}true{{else}}false{{/if}},
+        hasCreatedBy: {{#if (hasColumn columns 'created_by')}}true{{else}}false{{/if}},
+        hasUpdatedBy: {{#if (hasColumn columns 'updated_by')}}true{{else}}false{{/if}},
+      }
     );
   }
 
