@@ -35,7 +35,7 @@ import { {{PascalCase}} } from '../types/{{kebabCase}}.types';
   providedIn: 'root'
 })
 export class {{PascalCase}}StateManager extends BaseRealtimeStateManager<{{PascalCase}}> {
-  private {{camelCase}}Service: {{PascalCase}}Service;
+  private {{camelCase}}Service = inject({{PascalCase}}Service);
 
   constructor() {
     super({
@@ -47,8 +47,8 @@ export class {{PascalCase}}StateManager extends BaseRealtimeStateManager<{{Pasca
       retryAttempts: 3
     });
 
-    // Inject service after super() call to ensure proper initialization
-    this.{{camelCase}}Service = inject({{PascalCase}}Service);
+    // Initialize after all dependencies are ready
+    this.initializeStateManager();
 
     console.log('🎯 {{PascalCase}}StateManager initialized with real-time features');
   }
