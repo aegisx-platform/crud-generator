@@ -475,15 +475,12 @@ export class {{pascalCaseHelper moduleName}}ListComponent {
       // Always use traditional API for list/search operations
       // WebSocket events are for real-time sync of CUD operations only
       await this.{{camelCaseHelper moduleName}}Service.load{{pascalCaseHelper singularName}}List(params);
-
       {{#if withEvents}}
-      // Sync API response to state manager for real-time event handling
-      const apiData = this.{{camelCaseHelper moduleName}}Service.{{camelCaseHelper moduleName}}List();
-      this.{{camelCaseHelper singularName}}StateManager['itemsSignal'].set(apiData);
-
-      // Use state manager's data (includes real-time updates)
+      // With WebSocket events: read from state manager (includes real-time updates)
+      // State manager automatically syncs with API response via service
       this.dataSource.data = this.{{camelCaseHelper singularName}}StateManager.localState();
       {{else}}
+      // Without events: read directly from service
       this.dataSource.data = this.{{camelCaseHelper moduleName}}Service.{{camelCaseHelper moduleName}}List();
       {{/if}}
       if (this.paginator) {
