@@ -180,19 +180,19 @@ export class {{pascalCaseHelper singularName}}EditDialogComponent implements OnI
 
   async onFormSubmit(formData: {{pascalCaseHelper singularName}}FormData) {
 {{#if withEvents}}
-    // Optimistic update: Close dialog immediately for instant UX
+    // Call API directly - WebSocket events will handle real-time sync
     this.loading.set(true);
 
     try {
       const updateRequest = formData as Update{{pascalCaseHelper singularName}}Request;
 
-      // Use state manager's optimistic update
-      await this.{{camelCaseHelper singularName}}StateManager.optimisticUpdate(
+      // Call API to update
+      const result = await this.{{camelCaseHelper moduleName}}Service.update{{pascalCaseHelper singularName}}(
         this.data.{{camelCaseHelper moduleName}}.id,
-        updateRequest as any,
+        updateRequest,
       );
 
-      // Show success message and close immediately
+      // Show success message and close
       this.snackBar.open('{{pascalCaseHelper singularName}} updated successfully', 'Close', {
         duration: 3000,
       });

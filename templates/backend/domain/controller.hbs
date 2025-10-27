@@ -73,8 +73,12 @@ export class {{ModuleName}}Controller {
     const {{moduleName}} = await this.{{moduleName}}Service.create(createData);
     {{#if withEvents}}
 
-    // Emit created event for real-time updates
-    this.eventService.for('{{moduleName}}', String({{moduleName}}.id)).emitCreated({{moduleName}});
+    // 🔥 Emit created event for event-driven architecture
+    // Backend always emits events for audit trail, analytics, and microservices
+    // Frontend can optionally subscribe to these events
+    this.eventService
+      .for('{{toKebabCase currentRoute.camelName}}', '{{toKebabCase moduleName}}')
+      .emitCustom('created', {{moduleName}}, 'normal');
     {{/if}}
 
     request.log.info({ {{moduleName}}Id: {{moduleName}}.id }, '{{ModuleName}} created successfully');
@@ -186,8 +190,10 @@ export class {{ModuleName}}Controller {
     const {{moduleName}} = await this.{{moduleName}}Service.update(id, updateData);
     {{#if withEvents}}
 
-    // Emit updated event for real-time updates
-    this.eventService.for('{{moduleName}}', String(id)).emitUpdated({{moduleName}});
+    // 🔥 Emit updated event for event-driven architecture
+    this.eventService
+      .for('{{toKebabCase currentRoute.camelName}}', '{{toKebabCase moduleName}}')
+      .emitCustom('updated', { id, ...{{moduleName}} }, 'normal');
     {{/if}}
 
     request.log.info({ {{moduleName}}Id: id }, '{{ModuleName}} updated successfully');
@@ -213,8 +219,10 @@ export class {{ModuleName}}Controller {
     }
     {{#if withEvents}}
 
-    // Emit deleted event for real-time updates
-    this.eventService.for('{{moduleName}}', String(id)).emitDeleted(id);
+    // 🔥 Emit deleted event for event-driven architecture
+    this.eventService
+      .for('{{toKebabCase currentRoute.camelName}}', '{{toKebabCase moduleName}}')
+      .emitCustom('deleted', { id }, 'normal');
     {{/if}}
 
     request.log.info({ {{moduleName}}Id: id }, '{{ModuleName}} deleted successfully');
