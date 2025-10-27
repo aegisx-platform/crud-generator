@@ -472,20 +472,13 @@ export class {{pascalCaseHelper moduleName}}ListComponent {
           delete params[k as keyof typeof params],
       );
 
-{{#if withEvents}}
-      // With real-time state manager: Use synced data instead of manual API calls
-      this.dataSource.data = this.{{camelCaseHelper singularName}}StateManager.localState();
-      if (this.paginator) {
-        // TODO: State manager doesn't track total count yet, fallback to service
-        this.paginator.length = this.{{camelCaseHelper moduleName}}Service.total{{pascalCaseHelper singularName}}();
-      }
-{{else}}
+      // Always use traditional API for list/search operations
+      // WebSocket events are for real-time sync of CUD operations only
       await this.{{camelCaseHelper moduleName}}Service.load{{pascalCaseHelper singularName}}List(params);
       this.dataSource.data = this.{{camelCaseHelper moduleName}}Service.{{camelCaseHelper moduleName}}List();
       if (this.paginator) {
         this.paginator.length = this.{{camelCaseHelper moduleName}}Service.total{{pascalCaseHelper singularName}}();
       }
-{{/if}}
     });
   }
 
