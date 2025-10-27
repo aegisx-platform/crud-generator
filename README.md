@@ -2,17 +2,27 @@
 
 Professional CRUD Generator for AegisX Platform with interactive CLI and flexible template system.
 
-## 🎉 v2.0.1 Release Highlights
+## 🎉 v2.1.0 Release Highlights
 
-**Import Dialog Type Alignment Fix** - Critical fix for modules using `--with-import`:
+**HIS Mode (Hospital Information System Mode)** - New default behavior for critical enterprise systems:
 
-- ✅ Fixed ImportJob interface to match BaseImportService API responses
-- ✅ Corrected progress tracking (direct number 0-100, not nested object)
-- ✅ Simplified summary properties (flat structure: `successCount`, `failedCount`)
-- ✅ Fixed error handling (single `error` string instead of array)
-- ✅ Removed unsupported 'partial' status
+- ⚕️ **Data Accuracy First**: UI always shows actual database state (no optimistic updates)
+- 📊 **Backend Always Emits Events**: Audit trail and event-driven architecture ready
+- 🔧 **Optional Real-Time Mode**: Easy to enable by uncommenting 4 code blocks
+- 🛡️ **No User Confusion**: Never show outdated or server-rejected data
+- 🏗️ **Event-Driven Ready**: WebSocket events available for microservices
 
-**Migration**: Regenerate any modules using `--with-import` flag to get updated templates.
+**Why HIS Mode?** In critical systems (hospitals, financial, enterprise), showing users data that might not match the database is dangerous. HIS Mode ensures UI always reflects actual server state.
+
+**Migration**: Regenerate modules to get HIS Mode behavior:
+
+```bash
+# With events for audit trail
+npx aegisx-crud generate budgets --with-events --force
+
+# With import + events
+npx aegisx-crud generate budgets --with-import --with-events --force
+```
 
 See [CHANGELOG](../../docs/crud-generator/CHANGELOG.md) for complete details.
 
