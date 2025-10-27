@@ -57,7 +57,8 @@ export default fp(
     const {{moduleName}}Controller = new {{ModuleName}}Controller(
       {{moduleName}}Service{{#if (or (eq package 'enterprise') (eq package 'full'))}},
       exportService{{/if}}{{#if withImport}},
-      {{moduleName}}ImportService{{/if}}
+      {{moduleName}}ImportService{{/if}}{{#if withEvents}},
+      (fastify as any).eventService{{/if}}
     );
 
     // Optional: Decorate Fastify instance with service for cross-plugin access
