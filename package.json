@@ -1,6 +1,6 @@
 {
   "name": "@aegisx/crud-generator",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "CRUD Generator for AegisX Platform - Professional code generation with interactive CLI and template management",
   "main": "lib/index.js",
   "bin": {
