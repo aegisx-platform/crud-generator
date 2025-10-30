@@ -11,6 +11,9 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { {{pascalCaseHelper singularName}}Service } from '../services/{{kebabCaseHelper moduleName}}.service';
 import { {{pascalCaseHelper singularName}}, Update{{pascalCaseHelper singularName}}Request } from '../types/{{kebabCaseHelper moduleName}}.types';
+{{#if withEvents}}
+import { {{pascalCaseHelper singularName}}StateManager } from '../services/{{kebabCaseHelper moduleName}}-state-manager.service';
+{{/if}}
 import { {{pascalCaseHelper singularName}}FormComponent, {{pascalCaseHelper singularName}}FormData } from './{{kebabCaseHelper moduleName}}-form.component';
 
 export interface {{pascalCaseHelper singularName}}EditDialogData {
@@ -162,6 +165,9 @@ export interface {{pascalCaseHelper singularName}}EditDialogData {
 })
 export class {{pascalCaseHelper singularName}}EditDialogComponent implements OnInit {
   private {{camelCaseHelper moduleName}}Service = inject({{pascalCaseHelper singularName}}Service);
+{{#if withEvents}}
+  private {{camelCaseHelper singularName}}StateManager = inject({{pascalCaseHelper singularName}}StateManager);
+{{/if}}
   private snackBar = inject(MatSnackBar);
   private dialogRef = inject(MatDialogRef<{{pascalCaseHelper singularName}}EditDialogComponent>);
   public data = inject<{{pascalCaseHelper singularName}}EditDialogData>(MAT_DIALOG_DATA);
@@ -173,6 +179,36 @@ export class {{pascalCaseHelper singularName}}EditDialogComponent implements OnI
   }
 
   async onFormSubmit(formData: {{pascalCaseHelper singularName}}FormData) {
+{{#if withEvents}}
+    // Call API directly - WebSocket events will handle real-time sync
+    this.loading.set(true);
+
+    try {
+      const updateRequest = formData as Update{{pascalCaseHelper singularName}}Request;
+
+      // Call API to update
+      const result = await this.{{camelCaseHelper moduleName}}Service.update{{pascalCaseHelper singularName}}(
+        this.data.{{camelCaseHelper moduleName}}.id,
+        updateRequest,
+      );
+
+      // Show success message and close
+      this.snackBar.open('{{pascalCaseHelper singularName}} updated successfully', 'Close', {
+        duration: 3000,
+      });
+      this.dialogRef.close(true); // Close with success flag
+    } catch (error: any) {
+      const errorMessage = this.{{camelCaseHelper moduleName}}Service.permissionError()
+        ? 'You do not have permission to update {{lowercase singularName}}'
+        : error?.message || 'Failed to update {{lowercase singularName}}';
+      this.snackBar.open(errorMessage, 'Close', {
+        duration: 5000,
+        panelClass: ['error-snackbar'],
+      });
+    } finally {
+      this.loading.set(false);
+    }
+{{else}}
     this.loading.set(true);
 
     try {
@@ -203,6 +239,7 @@ export class {{pascalCaseHelper singularName}}EditDialogComponent implements OnI
     } finally {
       this.loading.set(false);
     }
+{{/if}}
   }
 
   onCancel() {

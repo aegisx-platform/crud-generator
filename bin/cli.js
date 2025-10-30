@@ -86,8 +86,16 @@ program
     false,
   )
   .option('--no-format', 'Skip auto-formatting generated files', false)
-  .option('--with-import', 'Include bulk import functionality (Excel/CSV upload)', false)
-  .option('--no-register', 'Skip auto-registration in plugin.loader.ts / app.routes.ts', false)
+  .option(
+    '--with-import',
+    'Include bulk import functionality (Excel/CSV upload)',
+    false,
+  )
+  .option(
+    '--no-register',
+    'Skip auto-registration in plugin.loader.ts / app.routes.ts',
+    false,
+  )
   .action(async (tableName, options) => {
     try {
       // Interactive mode if no table name provided
@@ -203,6 +211,7 @@ program
             dryRun: options.dryRun,
             force: options.force,
             withImport: options.withImport,
+            withEvents: options.withEvents,
           },
         );
 
@@ -211,11 +220,15 @@ program
         const filePaths = generatedFiles.flatMap((file) => {
           if (typeof file === 'string') {
             // Split comma-separated paths if present
-            return file.includes(',') ? file.split(',').map(p => p.trim()) : [file.trim()];
+            return file.includes(',')
+              ? file.split(',').map((p) => p.trim())
+              : [file.trim()];
           }
           // If it's already an object with path property, extract the path
           const filePath = file.path || file;
-          return typeof filePath === 'string' ? [filePath.trim()] : [String(filePath).trim()];
+          return typeof filePath === 'string'
+            ? [filePath.trim()]
+            : [String(filePath).trim()];
         });
 
         result = {
@@ -306,7 +319,9 @@ program
           console.log('\n📝 Auto-registration...');
 
           if (options.target === 'backend') {
-            const { autoRegisterBackendPlugin } = require('../lib/generators/backend-generator');
+            const {
+              autoRegisterBackendPlugin,
+            } = require('../lib/generators/backend-generator');
             await autoRegisterBackendPlugin(tableName, PROJECT_ROOT);
           } else if (options.target === 'frontend') {
             // Frontend auto-registration

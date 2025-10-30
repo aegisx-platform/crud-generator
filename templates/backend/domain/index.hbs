@@ -49,7 +49,8 @@ export default fp(
     {{#if withImport}}
     const {{moduleName}}ImportService = new {{ModuleName}}ImportService(
       (fastify as any).knex,
-      {{moduleName}}Repository
+      {{moduleName}}Repository,
+      (fastify as any).eventService // Pass eventService for import progress events
     );
     {{/if}}
 
@@ -57,25 +58,29 @@ export default fp(
     const {{moduleName}}Controller = new {{ModuleName}}Controller(
       {{moduleName}}Service{{#if (or (eq package 'enterprise') (eq package 'full'))}},
       exportService{{/if}}{{#if withImport}},
-      {{moduleName}}ImportService{{/if}}
+      {{moduleName}}ImportService{{/if}}{{#if withEvents}},
+      (fastify as any).eventService{{/if}}
     );
 
     // Optional: Decorate Fastify instance with service for cross-plugin access
     // fastify.decorate('{{moduleName}}Service', {{moduleName}}Service);
 
-    // Register routes with controller dependency
-    await fastify.register({{currentRoute.camelName}}Routes, {
-      controller: {{moduleName}}Controller,
-      prefix: options.prefix || '/{{toKebabCase tableName}}'
-    });
-
     {{#if withImport}}
-    // Register import routes
+    // ⚠️ IMPORTANT: Register import routes FIRST (before main routes)
+    // Import routes have static paths like /export, /import/template
+    // They must be registered before dynamic routes like /:id
+    // Otherwise /:id will match everything including /export
     await fastify.register({{currentRoute.camelName}}ImportRoutes, {
       controller: {{moduleName}}Controller,
       prefix: options.prefix || '/{{toKebabCase tableName}}'
     });
     {{/if}}
+
+    // Register main CRUD routes (includes dynamic /:id route)
+    await fastify.register({{currentRoute.camelName}}Routes, {
+      controller: {{moduleName}}Controller,
+      prefix: options.prefix || '/{{toKebabCase tableName}}'
+    });
 
     // Lifecycle hooks for monitoring
     fastify.addHook('onReady', async () => {

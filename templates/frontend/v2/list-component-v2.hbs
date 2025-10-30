@@ -54,6 +54,9 @@ import {
 } from '../../../shared/components/shared-export/shared-export.component';
 import { {{pascalCaseHelper singularName}}Service } from '../services/{{lowercase moduleName}}.service';
 import { {{pascalCaseHelper singularName}}, List{{pascalCaseHelper singularName}}Query } from '../types/{{lowercase moduleName}}.types';
+{{#if withEvents}}
+import { {{pascalCaseHelper singularName}}StateManager } from '../services/{{lowercase moduleName}}-state-manager.service';
+{{/if}}
 import { {{pascalCaseHelper singularName}}CreateDialogComponent } from './{{lowercase moduleName}}-create.dialog';
 import {
   {{pascalCaseHelper singularName}}EditDialogComponent,
@@ -111,6 +114,9 @@ import { {{pascalCaseHelper moduleName}}ListHeaderComponent } from './{{lowercas
 })
 export class {{pascalCaseHelper moduleName}}ListComponent {
   {{camelCaseHelper moduleName}}Service = inject({{pascalCaseHelper singularName}}Service);
+{{#if withEvents}}
+  {{camelCaseHelper singularName}}StateManager = inject({{pascalCaseHelper singularName}}StateManager);
+{{/if}}
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private axDialog = inject(AxDialogService);
@@ -364,6 +370,39 @@ export class {{pascalCaseHelper moduleName}}ListComponent {
 
   // --- Effect: reload {{lowercase moduleName}} on sort/page/search/filter change ---
   constructor() {
+{{#if withEvents}}
+    // Initialize real-time state manager
+    this.{{camelCaseHelper singularName}}StateManager.initialize();
+
+    // 🔧 OPTIONAL: Uncomment for real-time CRUD updates
+    // By default, list uses reload trigger for data accuracy (HIS mode)
+    // Uncomment below to enable real-time updates instead:
+    /*
+    // Real-time CRUD event subscriptions (optional)
+    // Backend always emits these events for audit trail and event-driven architecture
+    // Frontend can optionally subscribe for real-time UI updates
+
+    // Note: Import required dependencies first:
+    // import { WebSocketService } from '../../../core/services/websocket.service';
+    // import { AuthService } from '../../../core/services/auth.service';
+    // import { Subject } from 'rxjs';
+    // import { takeUntil } from 'rxjs/operators';
+
+    // Add these as class properties:
+    // private wsService = inject(WebSocketService);
+    // private authService = inject(AuthService);
+    // private destroy$ = new Subject<void>();
+
+    // Setup WebSocket connection for real-time updates
+    const token = this.authService.accessToken();
+    if (token) {
+      this.wsService.connect(token);
+      this.wsService.subscribe({ features: ['{{lowercase moduleName}}'] });
+      this.setupCrudEventListeners();
+    }
+    */
+{{/if}}
+
     // Sync export selection state
     effect(() => {
       const ids = new Set(this.selection.selected.map((b) => b.id));
@@ -461,6 +500,8 @@ export class {{pascalCaseHelper moduleName}}ListComponent {
           delete params[k as keyof typeof params],
       );
 
+      // Always use traditional API for list/search operations
+      // WebSocket events are for real-time sync of CUD operations only
       await this.{{camelCaseHelper moduleName}}Service.load{{pascalCaseHelper singularName}}List(params);
       this.dataSource.data = this.{{camelCaseHelper moduleName}}Service.{{camelCaseHelper moduleName}}List();
       if (this.paginator) {
@@ -774,11 +815,20 @@ export class {{pascalCaseHelper moduleName}}ListComponent {
     this.axDialog.confirmDelete(itemName).subscribe(async (confirmed) => {
       if (confirmed) {
         try {
+{{#if withEvents}}
+          // Use state manager's optimistic delete for real-time UI updates
+          await this.{{camelCaseHelper singularName}}StateManager.optimisticDelete({{camelCaseHelper singularName}}.id);
+          this.snackBar.open('{{pascalCaseHelper singularName}} deleted successfully', 'Close', {
+            duration: 3000,
+          });
+          // No need to reload - state manager auto-updates dataSource via effect
+{{else}}
           await this.{{camelCaseHelper moduleName}}Service.delete{{pascalCaseHelper singularName}}({{camelCaseHelper singularName}}.id);
           this.snackBar.open('{{pascalCaseHelper singularName}} deleted successfully', 'Close', {
             duration: 3000,
           });
           this.reloadTrigger.update((n) => n + 1);
+{{/if}}
         } catch {
           this.snackBar.open('Failed to delete {{lowercase singularName}}', 'Close', {
             duration: 3000,
@@ -887,4 +937,67 @@ export class {{pascalCaseHelper moduleName}}ListComponent {
   isRowExpanded({{camelCaseHelper singularName}}: {{pascalCaseHelper singularName}}): boolean {
     return this.expanded{{pascalCaseHelper singularName}}()?.id === {{camelCaseHelper singularName}}.id;
   }
+{{#if withEvents}}
+
+  // 🔧 OPTIONAL: Real-time CRUD Event Listeners
+  // This method is commented out by default - uncomment to enable real-time updates
+  // Remember to also uncomment the WebSocket setup in constructor and add required imports
+  /*
+  private setupCrudEventListeners(): void {
+    // 📡 Subscribe to 'created' event
+    // Triggered when a new {{singularName}} is created (by any user)
+    this.wsService
+      .subscribeToEvent('{{lowercase moduleName}}', '{{lowercase moduleName}}', 'created')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((event: any) => {
+        console.log('🔥 New {{singularName}} created:', event.data);
+
+        // Option 1: Add to local state and refresh display
+        this.{{camelCaseHelper moduleName}}Service.{{camelCaseHelper moduleName}}ListSignal.update(
+          list => [event.data, ...list]
+        );
+        this.reloadTrigger.update(n => n + 1); // Refresh display
+
+        // Option 2: Just refresh from server (more reliable)
+        // this.reloadTrigger.update(n => n + 1);
+      });
+
+    // 📡 Subscribe to 'updated' event
+    // Triggered when a {{singularName}} is modified (by any user)
+    this.wsService
+      .subscribeToEvent('{{lowercase moduleName}}', '{{lowercase moduleName}}', 'updated')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((event: any) => {
+        console.log('🔄 {{pascalCaseHelper singularName}} updated:', event.data);
+
+        // Option 1: Update in local state and refresh display
+        this.{{camelCaseHelper moduleName}}Service.{{camelCaseHelper moduleName}}ListSignal.update(
+          list => list.map(item => item.id === event.data.id ? event.data : item)
+        );
+        this.reloadTrigger.update(n => n + 1); // Refresh display
+
+        // Option 2: Just refresh from server (more reliable)
+        // this.reloadTrigger.update(n => n + 1);
+      });
+
+    // 📡 Subscribe to 'deleted' event
+    // Triggered when a {{singularName}} is removed (by any user)
+    this.wsService
+      .subscribeToEvent('{{lowercase moduleName}}', '{{lowercase moduleName}}', 'deleted')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((event: any) => {
+        console.log('🗑️ {{pascalCaseHelper singularName}} deleted:', event.data);
+
+        // Option 1: Remove from local state and refresh display
+        this.{{camelCaseHelper moduleName}}Service.{{camelCaseHelper moduleName}}ListSignal.update(
+          list => list.filter(item => item.id !== event.data.id)
+        );
+        this.reloadTrigger.update(n => n + 1); // Refresh display
+
+        // Option 2: Just refresh from server (more reliable)
+        // this.reloadTrigger.update(n => n + 1);
+      });
+  }
+  */
+{{/if}}
 }

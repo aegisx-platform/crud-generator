@@ -201,9 +201,8 @@ export class {{PascalCase}}Service {
         .toPromise();
 
       if (response) {
-        // Optimistic update: add to list
-        this.{{camelCaseHelper moduleName}}ListSignal.update((list) => [...list, response.data!]);
-        this.total{{PascalCase}}Signal.update(total => total + 1);
+        // ✅ Return data without optimistic update
+        // List component will refresh via reloadTrigger
         return response.data;
       }
       return null;
@@ -227,14 +226,8 @@ export class {{PascalCase}}Service {
         .toPromise();
 
       if (response) {
-        // Optimistic update: replace in list
-        this.{{camelCaseHelper moduleName}}ListSignal.update((list) =>
-          list.map((item) => (item.id === id ? response.data! : item))
-        );
-        // Update selected {{camelCaseHelper moduleName}} if it's the same
-        if (this.selected{{PascalCase}}Signal()?.id === id) {
-          this.selected{{PascalCase}}Signal.set(response.data);
-        }
+        // ✅ Return data without optimistic update
+        // List component will refresh via reloadTrigger
         return response.data;
       }
       return null;
@@ -258,15 +251,8 @@ export class {{PascalCase}}Service {
         .toPromise();
 
       if (response?.success) {
-        // Optimistic update: remove from list
-        this.{{camelCaseHelper moduleName}}ListSignal.update((list) =>
-          list.filter((item) => item.id !== id)
-        );
-        this.total{{PascalCase}}Signal.update(total => Math.max(0, total - 1));
-        // Clear selected {{camelCaseHelper moduleName}} if it's the deleted one
-        if (this.selected{{PascalCase}}Signal()?.id === id) {
-          this.selected{{PascalCase}}Signal.set(null);
-        }
+        // ✅ Return success without optimistic update
+        // List component will refresh via reloadTrigger
         return true;
       }
       return false;

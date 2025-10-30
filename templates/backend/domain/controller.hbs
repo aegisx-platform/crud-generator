@@ -34,6 +34,9 @@ import {
   UniquenessCheckSchema{{/if}}
 } from '../../../schemas/base.schemas';
 {{/if}}
+{{#if withEvents}}
+import { EventService } from '../../../shared/websocket/event.service';
+{{/if}}
 
 /**
  * {{ModuleName}} Controller
@@ -50,7 +53,8 @@ export class {{ModuleName}}Controller {
   constructor(
     private {{moduleName}}Service: {{ModuleName}}Service{{#if (or (eq package 'enterprise') (eq package 'full'))}},
     private exportService: ExportService{{/if}}{{#if withImport}},
-    private importService: {{ModuleName}}ImportService{{/if}}
+    private importService: {{ModuleName}}ImportService{{/if}}{{#if withEvents}},
+    private eventService: EventService{{/if}}
   ) {}
 
   /**
@@ -65,9 +69,18 @@ export class {{ModuleName}}Controller {
 
     // Transform API schema to domain model
     const createData = this.transformCreateSchema(request.body, request);
-    
+
     const {{moduleName}} = await this.{{moduleName}}Service.create(createData);
-    
+    {{#if withEvents}}
+
+    // 🔥 Emit created event for event-driven architecture
+    // Backend always emits events for audit trail, analytics, and microservices
+    // Frontend can optionally subscribe to these events
+    this.eventService
+      .for('{{toKebabCase currentRoute.camelName}}', '{{toKebabCase moduleName}}')
+      .emitCustom('created', {{moduleName}}, 'normal');
+    {{/if}}
+
     request.log.info({ {{moduleName}}Id: {{moduleName}}.id }, '{{ModuleName}} created successfully');
 
     return reply.code(201).success({{moduleName}}, '{{ModuleName}} created successfully');
@@ -173,8 +186,15 @@ export class {{ModuleName}}Controller {
 
     // Transform API schema to domain model
     const updateData = this.transformUpdateSchema(request.body, request);
-    
+
     const {{moduleName}} = await this.{{moduleName}}Service.update(id, updateData);
+    {{#if withEvents}}
+
+    // 🔥 Emit updated event for event-driven architecture
+    this.eventService
+      .for('{{toKebabCase currentRoute.camelName}}', '{{toKebabCase moduleName}}')
+      .emitCustom('updated', { id, ...{{moduleName}} }, 'normal');
+    {{/if}}
 
     request.log.info({ {{moduleName}}Id: id }, '{{ModuleName}} updated successfully');
 
@@ -197,6 +217,13 @@ export class {{ModuleName}}Controller {
     if (!deleted) {
       return reply.code(404).error('NOT_FOUND', '{{ModuleName}} not found');
     }
+    {{#if withEvents}}
+
+    // 🔥 Emit deleted event for event-driven architecture
+    this.eventService
+      .for('{{toKebabCase currentRoute.camelName}}', '{{toKebabCase moduleName}}')
+      .emitCustom('deleted', { id }, 'normal');
+    {{/if}}
 
     request.log.info({ {{moduleName}}Id: id }, '{{ModuleName}} deleted successfully');
 
@@ -245,6 +272,16 @@ export class {{ModuleName}}Controller {
     };
 
     const result = await this.{{moduleName}}Service.bulkCreate(transformedData);
+    {{#if withEvents}}
+
+    // Emit bulk created event for real-time updates
+    if (result.successful && result.successful.length > 0) {
+      this.eventService.for('{{moduleName}}', 'bulk').emitCustom('bulkCreated', {
+        count: result.summary.successful,
+        items: result.successful
+      }, 'normal');
+    }
+    {{/if}}
 
     return reply.code(201).success(result, `Bulk create completed: ${result.summary.successful} successful, ${result.summary.failed} failed`);
   }
@@ -268,6 +305,16 @@ export class {{ModuleName}}Controller {
     };
 
     const result = await this.{{moduleName}}Service.bulkUpdate(transformedData);
+    {{#if withEvents}}
+
+    // Emit bulk updated event for real-time updates
+    if (result.successful && result.successful.length > 0) {
+      this.eventService.for('{{moduleName}}', 'bulk').emitCustom('bulkUpdated', {
+        count: result.summary.successful,
+        items: result.successful
+      }, 'normal');
+    }
+    {{/if}}
 
     return reply.success(result, `Bulk update completed: ${result.summary.successful} successful, ${result.summary.failed} failed`);
   }
@@ -283,6 +330,16 @@ export class {{ModuleName}}Controller {
     request.log.info({ count: request.body.ids.length }, 'Bulk deleting {{moduleName}}s');
 
     const result = await this.{{moduleName}}Service.bulkDelete(request.body);
+    {{#if withEvents}}
+
+    // Emit bulk deleted event for real-time updates
+    if (result.successful && result.successful.length > 0) {
+      this.eventService.for('{{moduleName}}', 'bulk').emitCustom('bulkDeleted', {
+        count: result.summary.successful,
+        ids: result.successful
+      }, 'normal');
+    }
+    {{/if}}
 
     return reply.success(result, `Bulk delete completed: ${result.summary.successful} successful, ${result.summary.failed} failed`);
   }
@@ -310,6 +367,17 @@ export class {{ModuleName}}Controller {
     };
     
     const result = await this.{{moduleName}}Service.bulkUpdateStatus(statusData);
+    {{#if withEvents}}
+
+    // Emit bulk status updated event for real-time updates
+    if (result.successful && result.successful.length > 0) {
+      this.eventService.for('{{moduleName}}', 'bulk').emitCustom('bulkStatusUpdated', {
+        count: result.summary.successful,
+        status: statusData.status,
+        items: result.successful
+      }, 'normal');
+    }
+    {{/if}}
 
     return reply.success(result, `Bulk status update completed: ${result.summary.successful} successful, ${result.summary.failed} failed`);
   }
@@ -329,6 +397,11 @@ export class {{ModuleName}}Controller {
     request.log.info({ {{moduleName}}Id: id }, 'Activating {{moduleName}}');
 
     const result = await this.{{moduleName}}Service.activate(id, request.body);
+    {{#if withEvents}}
+
+    // Emit activated event for real-time updates
+    this.eventService.for('{{moduleName}}', String(id)).emitCustom('activated', result, 'normal');
+    {{/if}}
 
     return reply.success(result, '{{ModuleName}} activated successfully');
   }
@@ -348,6 +421,11 @@ export class {{ModuleName}}Controller {
     request.log.info({ {{moduleName}}Id: id }, 'Deactivating {{moduleName}}');
 
     const result = await this.{{moduleName}}Service.deactivate(id, request.body);
+    {{#if withEvents}}
+
+    // Emit deactivated event for real-time updates
+    this.eventService.for('{{moduleName}}', String(id)).emitCustom('deactivated', result, 'normal');
+    {{/if}}
 
     return reply.success(result, '{{ModuleName}} deactivated successfully');
   }
@@ -367,6 +445,11 @@ export class {{ModuleName}}Controller {
     request.log.info({ {{moduleName}}Id: id }, 'Toggling {{moduleName}} status');
 
     const result = await this.{{moduleName}}Service.toggle(id, request.body);
+    {{#if withEvents}}
+
+    // Emit status toggled event for real-time updates
+    this.eventService.for('{{moduleName}}', String(id)).emitCustom('statusToggled', result, 'normal');
+    {{/if}}
 
     return reply.success(result, '{{ModuleName}} status toggled successfully');
   }

@@ -27,8 +27,14 @@ export class {{ModuleName}}ImportService extends BaseImportService<{{ModuleName}
   constructor(
     knex: Knex,
     private {{moduleName}}Repository: {{ModuleName}}Repository,
+    eventService?: any, // EventService for WebSocket progress updates
   ) {
-    super(knex, {{ModuleName}}ImportService.createConfig({{moduleName}}Repository));
+    super(
+      knex,
+      {{ModuleName}}ImportService.createConfig({{moduleName}}Repository),
+      '{{moduleName}}',
+      eventService, // Pass eventService to BaseImportService for progress events
+    );
   }
 
   /**
