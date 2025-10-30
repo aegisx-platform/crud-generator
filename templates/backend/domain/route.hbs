@@ -62,7 +62,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'create')
     ], // Authentication & authorization required
     handler: controller.create.bind(controller)
   });
@@ -90,7 +90,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.read', '{{moduleName}}.export', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'export')
     ],
     handler: controller.export.bind(controller)
   });
@@ -115,7 +115,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.read', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'read')
     ], // Authentication & authorization required
     handler: controller.findOne.bind(controller)
   });
@@ -137,7 +137,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.read', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'read')
     ], // Authentication & authorization required
     handler: controller.findMany.bind(controller)
   });
@@ -163,7 +163,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.update', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'update')
     ], // Authentication & authorization required
     handler: controller.update.bind(controller)
   });
@@ -187,7 +187,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.delete', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'delete')
     ], // Authentication & authorization required
     handler: controller.delete.bind(controller)
   });
@@ -213,7 +213,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.read', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'read')
     ],
     handler: controller.getDropdownOptions.bind(controller)
   });
@@ -235,7 +235,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.create', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'create')
     ],
     handler: controller.bulkCreate.bind(controller)
   });
@@ -257,7 +257,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.update', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'update')
     ],
     handler: controller.bulkUpdate.bind(controller)
   });
@@ -279,7 +279,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.delete', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'delete')
     ],
     handler: controller.bulkDelete.bind(controller)
   });
@@ -302,7 +302,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.update', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'update')
     ],
     handler: controller.bulkUpdateStatus.bind(controller)
   });
@@ -326,7 +326,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.update', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'update')
     ],
     handler: controller.activate.bind(controller)
   });
@@ -350,7 +350,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.update', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'update')
     ],
     handler: controller.deactivate.bind(controller)
   });
@@ -374,7 +374,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.update', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'update')
     ],
     handler: controller.toggle.bind(controller)
   });
@@ -397,7 +397,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.read', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'read')
     ],
     handler: controller.getStats.bind(controller)
   });
@@ -425,7 +425,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.create', '{{moduleName}}.update', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'read')
     ],
     handler: controller.validate.bind(controller)
   });
@@ -448,7 +448,7 @@ export async function {{currentRoute.camelName}}Routes(
     },
     preValidation: [
       fastify.authenticate,
-      fastify.authorize(['{{moduleName}}.read', 'admin'])
+      fastify.verifyPermission('{{moduleName}}', 'read')
     ],
     handler: controller.checkUniqueness.bind(controller)
   });
